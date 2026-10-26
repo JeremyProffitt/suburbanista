@@ -1,0 +1,6 @@
+This adapter is independently authored for Suburban Remote.
+
+The architecture was informed by the public aws-lambda-go-api-proxy project:
+https://github.com/awslabs/aws-lambda-go-api-proxy
+That project is licensed under Apache License 2.0, not MIT. No source from
+that project is copied into this adapter, and it is not a dependency.

@@ -1,0 +1,94 @@
+name: Owner command controls
+on:
+  workflow_dispatch:
+    inputs:
+      enable:
+        description: Enable Start, Lock, and Unlock (false pauses all commands)
+        type: boolean
+        default: false
+        required: true
+      owner_present:
+        description: The owner is present for vehicle testing
+        type: boolean
+        default: false
+      outdoors:
+        description: The vehicle is outdoors in a safe location
+        type: boolean
+        default: false
+      capabilities_confirmed:
+        description: The owner confirms Start, Lock, and Unlock are supported
+        type: boolean
+        default: false
+permissions:
+  contents: read
+concurrency:
+  group: suburban-remote-command-controls
+  cancel-in-progress: false
+env:
+  GOWORK: 'off'
+  GOTOOLCHAIN: local
+  AWS_REGION: us-east-1
+  AWS_PAGER: ''
+jobs:
+  build:
+    if: github.ref == 'refs/heads/main' && github.repository == 'JeremyProffittOrg/Suburban-Remote'
+    runs-on: [self-hosted, Linux, X64]
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff
+        with:
+          go-version-file: go.mod
+          cache: true
+      - name: Test and build guarded helper
+        run: |
+          set -euo pipefail
+          go test ./cmd/commandflags -count=1
+          CGO_ENABLED=0 go build -trimpath -o commandflags ./cmd/commandflags
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: commandflags
+          path: commandflags
+          retention-days: 7
+          if-no-files-found: error
+  control:
+    needs: build
+    if: github.ref == 'refs/heads/main' && github.repository == 'JeremyProffittOrg/Suburban-Remote'
+    runs-on: [self-hosted, Linux, X64]
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      id-token: write
+    env:
+      ENABLE: ${{ inputs.enable }}
+      OWNER_PRESENT: ${{ inputs.owner_present }}
+      OUTDOORS: ${{ inputs.outdoors }}
+      CAPABILITIES_CONFIRMED: ${{ inputs.capabilities_confirmed }}
+      OWNER_AMAZON_USER_ID: ${{ vars.OWNER_AMAZON_USER_ID }}
+      DEPLOY_AWS_ACCOUNT: ${{ vars.DEPLOY_AWS_ACCOUNT }}
+    steps:
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
+        with:
+          name: commandflags
+      - name: Check explicit enable attestations before AWS access
+        run: |
+          set -euo pipefail
+          chmod +x commandflags
+          ./commandflags check
+      - uses: aws-actions/configure-aws-credentials@7474bc4690e29a8392af63c5b98e7449536d5c3a
+        with:
+          retry-max-attempts: 1
+          role-to-assume: ${{ vars.AWS_DEPLOY_ROLE_ARN }}
+          role-session-name: gha-Suburban-Remote-controls-${{ github.run_id }}
+          aws-region: us-east-1
+      - name: Verify account and change only the owned flag row
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$DEPLOY_AWS_ACCOUNT"
+          test "$(aws sts get-caller-identity --query Account --output text)" = "$DEPLOY_AWS_ACCOUNT"
+          table="$(aws cloudformation describe-stacks --stack-name suburban-remote --query 'Stacks[0].Outputs[?OutputKey==`StateTableName`].OutputValue | [0]' --output text)"
+          test -n "$table" && test "$table" != None
+          STATE_TABLE="$table" ./commandflags apply

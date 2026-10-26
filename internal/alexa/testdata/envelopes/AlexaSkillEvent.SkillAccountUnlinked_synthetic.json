@@ -1,0 +1,26 @@
+{
+  "context": {
+    "System": {
+      "apiEndpoint": "https://api.amazonalexa.com",
+      "application": {
+        "applicationId": "amzn1.ask.skill.00000000-0000-4000-8000-000000000001"
+      },
+      "device": {
+        "supportedInterfaces": {},
+        "deviceId": "amzn1.ask.device.synthetic"
+      },
+      "user": {
+        "userId": "amzn1.ask.account.synthetic-owner"
+      }
+    }
+  },
+  "request": {
+    "timestamp": "2026-10-23T12:00:00Z",
+    "eventCreationTime": "2026-10-23T11:59:59Z",
+    "requestId": "alexa.skill.event.synthetic",
+    "eventPublishingTime": "2026-10-23T12:00:00Z",
+    "locale": "en-US",
+    "type": "AlexaSkillEvent.SkillAccountUnlinked"
+  },
+  "version": "1.0"
+}

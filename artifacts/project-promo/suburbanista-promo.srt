@@ -1,0 +1,125 @@
+1
+00:00:00,333 --> 00:00:05,152
+Meet Suburbanista. A personal dashboard built
+around your Suburban,
+
+2
+00:00:05,152 --> 00:00:09,971
+with an interface that feels as individual as
+the
+
+3
+00:00:09,971 --> 00:00:11,042
+vehicle itself.
+
+4
+00:00:12,389 --> 00:00:21,148
+Choose your view. City streets. Coastal
+mornings. Mountain scenery.
+
+5
+00:00:21,148 --> 00:00:29,906
+Open desert. Select your favorite backgrounds,
+and let them
+
+6
+00:00:29,906 --> 00:00:30,879
+rotate.
+
+7
+00:00:32,222 --> 00:00:37,256
+Weather and time of day shape the display.
+Explore
+
+8
+00:00:37,256 --> 00:00:42,290
+clear mornings, rain, snow, and nighttime
+scenes, with useful
+
+9
+00:00:42,290 --> 00:00:45,086
+weather information close at hand.
+
+10
+00:00:46,444 --> 00:00:52,146
+Choose the button style you like. Select your
+rotation,
+
+11
+00:00:52,146 --> 00:00:57,848
+adjust colors, and hold a favorite look while
+keeping
+
+12
+00:00:57,848 --> 00:00:59,748
+the controls available.
+
+13
+00:01:01,083 --> 00:01:06,346
+Browse appearance options, select the
+backgrounds and buttons you
+
+14
+00:01:06,346 --> 00:01:11,608
+want, and use the display in portrait or
+landscape.
+
+15
+00:01:11,608 --> 00:01:13,948
+Your choices stay together.
+
+16
+00:01:15,306 --> 00:01:20,279
+Pan and zoom the map, then tap Center to
+
+17
+00:01:20,279 --> 00:01:25,252
+return and refresh. Opening the app checks the
+map
+
+18
+00:01:25,252 --> 00:01:29,674
+too. Last Updated requests a new vehicle
+location.
+
+19
+00:01:31,028 --> 00:01:35,767
+Prefer voice? The Alexa development integration
+recognizes: Alexa, ask
+
+20
+00:01:35,767 --> 00:01:40,506
+Suburban for status. Hear fuel, range, mileage,
+and the
+
+21
+00:01:40,506 --> 00:01:45,245
+age of each reading. Linked owners can also
+request
+
+22
+00:01:45,245 --> 00:01:48,404
+start, lock, unlock, and command status.
+
+23
+00:01:49,750 --> 00:01:55,321
+Owner sign-in protects vehicle requests. Behind
+the scenes, hourly
+
+24
+00:01:55,321 --> 00:02:00,892
+readings are stored with their source times,
+building a
+
+25
+00:02:00,892 --> 00:02:03,986
+history for future miles-per-gallon analysis.
+
+26
+00:02:05,333 --> 00:02:10,468
+Suburbanista. A connected project that brings
+your vehicle, your
+
+27
+00:02:10,468 --> 00:02:14,461
+information, and your style into one view.

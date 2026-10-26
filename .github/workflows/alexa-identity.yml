@@ -1,0 +1,148 @@
+name: Create Alexa skill identity
+on:
+  workflow_dispatch:
+    inputs:
+      action:
+        description: Resolve identity, update icons, or deploy the existing development voice model
+        type: choice
+        options: [resolve, update-icons, deploy-voice, configure-linking, inspect-linking]
+        default: resolve
+      create:
+        description: Resolve or create the Suburban Remote development skill
+        type: boolean
+        required: true
+        default: false
+      reference_skill_id:
+        description: Existing Automatica skill ID to verify the developer vendor
+        type: string
+        required: true
+      owner_approved_link_configuration:
+        description: Owner explicitly approved passing the existing shared LWA secret to this one-time Alexa linking step
+        type: boolean
+        default: false
+permissions:
+  contents: read
+concurrency:
+  group: suburban-remote-alexa-identity
+  cancel-in-progress: false
+env:
+  GOWORK: 'off'
+  GOTOOLCHAIN: local
+jobs:
+  build:
+    if: (inputs.create || inputs.action == 'update-icons' || inputs.action == 'deploy-voice' || inputs.action == 'configure-linking' || inputs.action == 'inspect-linking') && github.ref == 'refs/heads/main'
+    runs-on: [self-hosted, Linux, X64]
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff
+        with:
+          go-version-file: go.mod
+          cache: false
+      - run: |
+          set -euo pipefail
+          go test ./cmd/alexaskill -count=1
+          mkdir -p dist
+          CGO_ENABLED=0 go build -trimpath -o dist/alexaskill ./cmd/alexaskill
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: alexa-identity-tool
+          path: |
+            dist/alexaskill
+            skill-package/skill.json
+            skill-package/interactionModels/custom/en-US.json
+          retention-days: 7
+          if-no-files-found: error
+  resolve:
+    needs: build
+    runs-on: [self-hosted, Linux, X64]
+    timeout-minutes: ${{ inputs.action == 'deploy-voice' && 25 || 10 }}
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - name: Require the one-time owner approval
+        if: inputs.action == 'configure-linking' && !inputs.owner_approved_link_configuration
+        run: |
+          echo "Explicit owner approval for shared LWA secret configuration is required."
+          exit 1
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
+        with:
+          name: alexa-identity-tool
+      - name: Install pinned ASK CLI before loading credentials
+        run: |
+          set -euo pipefail
+          npm install --prefix "$RUNNER_TEMP/ask-cli" ask-cli@2.30.7
+          echo "$RUNNER_TEMP/ask-cli/node_modules/.bin" >> "$GITHUB_PATH"
+          chmod +x dist/alexaskill
+      # ASK's environment profile requires real AWS environment credentials.
+      # OIDC supplies them; this workflow makes no AWS deployment changes.
+      - uses: aws-actions/configure-aws-credentials@7474bc4690e29a8392af63c5b98e7449536d5c3a
+        with:
+          retry-max-attempts: 1
+          role-to-assume: ${{ vars.AWS_DEPLOY_ROLE_ARN }}
+          role-session-name: gha-Suburban-Remote-alexa-${{ github.run_id }}
+          aws-region: us-east-1
+      - name: Resolve the deployed Alexa endpoint
+        if: inputs.action == 'deploy-voice'
+        env:
+          AWS_PAGER: ''
+        run: |
+          set -euo pipefail
+          endpoint="$(aws cloudformation describe-stacks --stack-name suburban-remote --region us-east-1 --query 'Stacks[0].Outputs[?OutputKey==`AlexaFunctionArn`].OutputValue | [0]' --output text)"
+          [[ "$endpoint" =~ ^arn:aws:lambda:us-east-1:759775734231:function:suburban-remote-AlexaFunction-[A-Za-z0-9]+$ ]]
+          echo "ALEXA_FUNCTION_ARN=$endpoint" >> "$GITHUB_ENV"
+      - name: Verify vendor and resolve development skill
+        if: inputs.action != 'configure-linking'
+        env:
+          ASK_DEFAULT_PROFILE: __ENVIRONMENT_ASK_PROFILE__
+          ASK_REFRESH_TOKEN: ${{ secrets.ASK_REFRESH_TOKEN }}
+          ASK_VENDOR_ID: ${{ vars.ASK_VENDOR_ID }}
+          ALEXA_SKILL_ID: ${{ vars.ALEXA_SKILL_ID }}
+          REFERENCE_SKILL_ID: ${{ inputs.reference_skill_id }}
+          ALEXA_ACTION: ${{ inputs.action }}
+          LWA_CLIENT_ID: ${{ vars.LWA_CLIENT_ID }}
+        run: ./dist/alexaskill
+      - name: Configure the approved shared LWA profile
+        if: inputs.action == 'configure-linking' && inputs.owner_approved_link_configuration
+        env:
+          ASK_DEFAULT_PROFILE: __ENVIRONMENT_ASK_PROFILE__
+          ASK_REFRESH_TOKEN: ${{ secrets.ASK_REFRESH_TOKEN }}
+          ASK_VENDOR_ID: ${{ vars.ASK_VENDOR_ID }}
+          ALEXA_SKILL_ID: ${{ vars.ALEXA_SKILL_ID }}
+          REFERENCE_SKILL_ID: ${{ inputs.reference_skill_id }}
+          ALEXA_ACTION: configure-linking
+          OWNER_APPROVED_LINK_CONFIGURATION: 'true'
+          LWA_CLIENT_ID: ${{ vars.LWA_CLIENT_ID }}
+          LWA_CLIENT_SECRET: ${{ secrets.LWA_CLIENT_SECRET }}
+        run: ./dist/alexaskill
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: alexa-skill-identity
+          path: artifacts/alexa-skill.json
+          retention-days: 7
+          if-no-files-found: ignore
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always() && inputs.action == 'inspect-linking'
+        with:
+          name: alexa-linking-inspection
+          path: artifacts/alexa-linking-inspection.json
+          retention-days: 7
+          if-no-files-found: ignore
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always() && inputs.action == 'configure-linking'
+        with:
+          name: alexa-linking-configuration
+          path: artifacts/alexa-linking.json
+          retention-days: 7
+          if-no-files-found: ignore
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always() && inputs.action == 'deploy-voice'
+        with:
+          name: alexa-voice-development
+          path: artifacts/alexa-voice.json
+          retention-days: 7
+          if-no-files-found: ignore

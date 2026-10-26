@@ -1,0 +1,15 @@
+{
+  "version": "2.0",
+  "routeKey": "$default",
+  "rawPath": "/contract",
+  "rawQueryString": "a=1&a=2&b=x%2Cy",
+  "queryStringParameters": {"a": "wrong", "b": "wrong"},
+  "cookies": ["first=one", "second=two"],
+  "headers": {"host": "suburban.jeremy.ninja", "x-forwarded-for": "198.51.100.99", "x-real-ip": "198.51.100.98"},
+  "requestContext": {
+    "domainName": "suburban.jeremy.ninja",
+    "requestId": "synthetic-request-id",
+    "http": {"method": "GET", "path": "/wrong", "sourceIp": "192.0.2.10", "protocol": "HTTP/1.1"}
+  },
+  "isBase64Encoded": false
+}

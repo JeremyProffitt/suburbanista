@@ -1,0 +1,223 @@
+name: Android owner release
+on:
+  workflow_dispatch:
+    inputs:
+      verified_run_id:
+        description: Successful build run whose exact signed APK passed device and widget gates
+        required: true
+        type: string
+      verified_apk_sha256:
+        description: SHA256 of the APK verified on the device
+        required: true
+        type: string
+  push:
+    branches: [main]
+    paths: ['mobile/**', 'cmd/androidrelease/**', 'pkg/contract/**', '.github/workflows/android.yml', '.github/actions/android-sdk/**']
+permissions:
+  contents: read
+concurrency:
+  group: suburban-remote-android-release
+  cancel-in-progress: false
+env:
+  GOWORK: 'off'
+  GOTOOLCHAIN: local
+  ANDROID_NDK_VERSION: '28.2.13676358'
+  ANDROID_BUILD_TOOLS_VERSION: '36.0.0'
+jobs:
+  build:
+    if: github.event_name == 'push'
+    runs-on: [self-hosted, Linux, X64]
+    timeout-minutes: 40
+    permissions:
+      contents: read
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff
+        with:
+          go-version-file: go.mod
+          cache: false
+      - uses: ./.github/actions/android-sdk
+      - name: Prepare pinned build tools
+        shell: bash
+        run: |
+          set -euo pipefail
+          sudo apt-get update -qq
+          sudo apt-get install -y libgl1-mesa-dev xorg-dev
+          mkdir -p dist
+          go run ./cmd/verify redaction --paths mobile/internal mobile/cmd mobile/nativewidgets cmd/androidrelease pkg/contract
+          go test ./cmd/androidrelease ./pkg/contract -count=1
+          go build -trimpath -o dist/androidrelease ./cmd/androidrelease
+          go install fyne.io/tools/cmd/fyne@v1.7.3
+          mobile_version=$(cd mobile && go list -m -f '{{.Version}}' golang.org/x/mobile)
+          test "$mobile_version" = v0.0.0-20260908204917-8b95e45f8d3e
+          go install "golang.org/x/mobile/cmd/gomobile@$mobile_version"
+          go install "golang.org/x/mobile/cmd/gobind@$mobile_version"
+          echo "$GITHUB_WORKSPACE/dist" >> "$GITHUB_PATH"
+      - name: Allocate the next published version
+        id: version
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          gh api --paginate --slurp "repos/$GITHUB_REPOSITORY/releases?per_page=100" > releases.json
+          version="$(dist/androidrelease next-version)"
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          echo "ANDROID_VERSION_CODE=$version" >> "$GITHUB_ENV"
+      - name: Build Fyne APK
+        shell: bash
+        env:
+          UPDATE_MANIFEST_PUBLIC_KEY: ${{ vars.UPDATE_MANIFEST_PUBLIC_KEY }}
+        run: |
+          set -euo pipefail
+          dist/androidrelease prepare
+          (cd mobile && go test -tags ci ./... -count=1)
+          export CGO_LDFLAGS="-Wl,-z,max-page-size=16384"
+          (cd mobile/cmd/mobile && fyne package -os android --release --name Suburbanista --icon Icon.png --app-id ninja.jeremy.suburbanremote --app-version "1.0.$ANDROID_VERSION_CODE" --app-build "$ANDROID_VERSION_CODE" --tags accessibility,release --metadata "updateManifestPublicKey=$UPDATE_MANIFEST_PUBLIC_KEY")
+          cp mobile/cmd/mobile/Suburbanista.apk universal.apk
+      - name: Build and merge native widgets
+        shell: bash
+        run: |
+          set -euo pipefail
+          dist/androidrelease build-widgets dist/nativewidgets.aar "$ANDROID_HOME/platforms/android-36/android.jar"
+          dist/androidrelease merge-widgets universal.apk dist/nativewidgets.aar universal-widgets.apk "$ANDROID_BUILD_TOOLS" "$ANDROID_HOME/platforms/android-36/android.jar"
+          mv universal-widgets.apk universal.apk
+      - name: Set Android API levels and align APK
+        shell: bash
+        run: |
+          set -euo pipefail
+          dist/androidrelease platform-sdk
+          "$ANDROID_BUILD_TOOLS/aapt2" dump badging universal-supported.apk
+          "$ANDROID_BUILD_TOOLS/zipalign" -P 16 -f 4 universal-supported.apk aligned.apk
+          cp aligned.apk dist/aligned.apk
+          cat "$ANDROID_NDK_HOME/source.properties"
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: android-unsigned
+          path: |
+            dist/androidrelease
+            dist/aligned.apk
+          retention-days: 7
+          if-no-files-found: error
+  sign:
+    needs: build
+    runs-on: [self-hosted, Linux, X64]
+    timeout-minutes: 15
+    permissions:
+      contents: write
+      id-token: write
+    env:
+      ANDROID_VERSION_CODE: ${{ needs.build.outputs.version }}
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: false
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
+        with:
+          name: android-unsigned
+      - uses: ./.github/actions/android-sdk
+      - name: Install verification tools
+        run: |
+          set -euo pipefail
+          chmod +x androidrelease
+      - name: Sign and verify APK and release manifest
+        env:
+          ANDROID_SIGNING_KEYSTORE_B64: ${{ secrets.ANDROID_SIGNING_KEYSTORE_B64 }}
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ vars.ANDROID_KEY_ALIAS }}
+          ANDROID_SIGNING_CERT_SHA256: ${{ vars.ANDROID_SIGNING_CERT_SHA256 }}
+          UPDATE_MANIFEST_SIGNING_KEY: ${{ secrets.UPDATE_MANIFEST_SIGNING_KEY }}
+          UPDATE_MANIFEST_PUBLIC_KEY: ${{ vars.UPDATE_MANIFEST_PUBLIC_KEY }}
+        run: ./androidrelease sign
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: android-signed-${{ needs.build.outputs.version }}
+          path: |
+            artifacts/suburban-remote-${{ needs.build.outputs.version }}.apk
+            artifacts/release-manifest.json
+            artifacts/android-release.json
+          retention-days: 7
+          if-no-files-found: error
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: android-metadata-${{ needs.build.outputs.version }}
+          path: |
+            artifacts/release-manifest.json
+            artifacts/android-release.json
+          retention-days: 7
+          if-no-files-found: error
+  publish:
+    if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main'
+    runs-on: [self-hosted, Linux, X64]
+    timeout-minutes: 15
+    permissions:
+      actions: read
+      contents: write
+      id-token: write
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff
+        with:
+          go-version-file: go.mod
+      - uses: ./.github/actions/android-sdk
+      - name: Retrieve the exact verified signed artifact
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERIFIED_RUN_ID: ${{ inputs.verified_run_id }}
+          VERIFIED_APK_SHA256: ${{ inputs.verified_apk_sha256 }}
+          UPDATE_MANIFEST_PUBLIC_KEY: ${{ vars.UPDATE_MANIFEST_PUBLIC_KEY }}
+          ANDROID_SIGNING_CERT_SHA256: ${{ vars.ANDROID_SIGNING_CERT_SHA256 }}
+        run: |
+          set -euo pipefail
+          [[ "$VERIFIED_RUN_ID" =~ ^[0-9]+$ ]]
+          [[ "$VERIFIED_APK_SHA256" =~ ^[a-f0-9]{64}$ ]]
+          gh api "repos/$GITHUB_REPOSITORY/actions/runs/$VERIFIED_RUN_ID" > run.json
+          jq -e '.conclusion == "success" and .event == "push" and .head_branch == "main" and .path == ".github/workflows/android.yml"' run.json >/dev/null
+          source_sha=$(jq -r .head_sha run.json)
+          [[ "$source_sha" =~ ^[a-f0-9]{40}$ ]]
+          # Readiness is reviewed source evidence, never inferred from a build.
+          # It must bind every gate to these exact bytes and successful run.
+          export ANDROID_SOURCE_SHA="$source_sha"
+          gh run download "$VERIFIED_RUN_ID" --repo "$GITHUB_REPOSITORY" --pattern 'android-signed-*' --dir signed-download
+          count=$(find signed-download -name android-release.json | wc -l)
+          test "$count" -eq 1
+          report=$(find signed-download -name android-release.json)
+          mkdir -p artifacts
+          cp "$(dirname "$report")"/* artifacts/
+          test -f "artifacts/android-readiness/$VERIFIED_RUN_ID.json"
+          cp "artifacts/android-readiness/$VERIFIED_RUN_ID.json" artifacts/android-readiness.json
+          version=$(jq -r .versionCode artifacts/android-release.json)
+          export ANDROID_VERSION_CODE="$version"
+          go run ./cmd/androidrelease verify-artifact
+          echo "ANDROID_VERSION_CODE=$version" >> "$GITHUB_ENV"
+          echo "ANDROID_SOURCE_SHA=$source_sha" >> "$GITHUB_ENV"
+      - name: Publish immutable owner download
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          tag="android-v$ANDROID_VERSION_CODE"
+          # gh release create refuses an existing release; never use upload --clobber.
+          gh release create "$tag" artifacts/*.apk artifacts/release-manifest.json artifacts/android-release.json --target "$ANDROID_SOURCE_SHA" --title "Suburbanista 1.0.$ANDROID_VERSION_CODE" --notes "Exact signed APK retained from the verified build run. Device, appearance, map and compact/full widget gates verified before publication. Package and signing identity preserved; action icons do not claim physical vehicle state."
+      - uses: aws-actions/configure-aws-credentials@7474bc4690e29a8392af63c5b98e7449536d5c3a
+        with:
+          retry-max-attempts: 1
+          role-to-assume: ${{ vars.AWS_DEPLOY_ROLE_ARN }}
+          role-session-name: gha-Suburban-Remote-android-${{ github.run_id }}
+          aws-region: us-east-1
+      - name: Publish private handset update
+        env:
+          RELEASE_BUCKET: ${{ vars.CLOUDFORMATION_S3_BUCKET }}
+        run: |
+          set -euo pipefail
+          prefix="suburban-remote/android/$ANDROID_VERSION_CODE"
+          aws s3api put-object --bucket "$RELEASE_BUCKET" --key "$prefix/suburban-remote-$ANDROID_VERSION_CODE.apk" --body "artifacts/suburban-remote-$ANDROID_VERSION_CODE.apk" --content-type application/vnd.android.package-archive --server-side-encryption AES256 --if-none-match '*'
+          aws s3api put-object --bucket "$RELEASE_BUCKET" --key "$prefix/release-manifest.json" --body artifacts/release-manifest.json --content-type application/json --server-side-encryption AES256 --if-none-match '*'
+          aws s3api put-object --bucket "$RELEASE_BUCKET" --key suburban-remote/android/latest.json --body artifacts/release-manifest.json --content-type application/json --cache-control no-store --server-side-encryption AES256

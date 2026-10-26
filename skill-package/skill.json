@@ -1,0 +1,35 @@
+{
+  "manifest": {
+    "manifestVersion": "1.0",
+    "publishingInformation": {
+      "locales": {
+        "en-US": {
+          "name": "Suburbanista",
+          "smallIconUri": "https://suburban.jeremy.ninja/assets/suburbanista-icon-v2-108.png",
+          "largeIconUri": "https://suburban.jeremy.ninja/assets/suburbanista-icon-v2-512.png",
+          "summary": "Owner access to Suburban Remote.",
+          "description": "Development skill for the vehicle owner's Suburban Remote service. Vehicle commands are not yet enabled."
+        }
+      },
+      "isAvailableWorldwide": false,
+      "distributionCountries": ["US"],
+      "distributionMode": "PUBLIC",
+      "category": "CONNECTED_CAR",
+      "testingInstructions": "Development only. Do not submit for certification. Endpoint, owner account linking, and attended vehicle checks are pending."
+    },
+    "privacyAndCompliance": {
+      "allowsPurchases": false,
+      "usesPersonalInfo": true,
+      "isChildDirected": false,
+      "isExportCompliant": true,
+      "containsAds": false,
+      "locales": {
+        "en-US": {
+          "privacyPolicyUrl": "https://suburban.jeremy.ninja/privacy"
+        }
+      }
+    },
+    "apis": {"custom": {}},
+    "permissions": []
+  }
+}

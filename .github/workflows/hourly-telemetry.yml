@@ -1,0 +1,64 @@
+name: Verify hourly vehicle telemetry
+on:
+  workflow_dispatch:
+    inputs:
+      action:
+        description: Inspect the latest archive, or collect this hour once
+        type: choice
+        default: status
+        options: [status, collect-current-hour]
+permissions:
+  contents: read
+  id-token: write
+concurrency:
+  group: suburban-hourly-telemetry-verification
+  cancel-in-progress: false
+jobs:
+  verify:
+    if: github.ref == 'refs/heads/main'
+    runs-on: [self-hosted, Linux, X64]
+    timeout-minutes: 5
+    steps:
+      - uses: aws-actions/configure-aws-credentials@7474bc4690e29a8392af63c5b98e7449536d5c3a
+        with:
+          retry-max-attempts: 1
+          role-to-assume: ${{ vars.AWS_DEPLOY_ROLE_ARN }}
+          role-session-name: gha-Suburban-Remote-telemetry-${{ github.run_id }}
+          aws-region: us-east-1
+      - name: Verify one hourly archive and the enabled schedule
+        env:
+          AWS_PAGER: ''
+          ACTION: ${{ inputs.action }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          umask 077
+          work=$(mktemp -d "$RUNNER_TEMP/suburban-telemetry.XXXXXX")
+          trap 'rm -rf -- "$work"' EXIT
+          mkdir -p artifacts
+          function_arn=$(aws cloudformation describe-stacks --stack-name suburban-remote --query 'Stacks[0].Outputs[?OutputKey==`HourlyTelemetryFunctionArn`].OutputValue | [0]' --output text)
+          source=$(aws cloudformation describe-stacks --stack-name suburban-remote --query 'Stacks[0].Parameters[?ParameterKey==`DeploymentNonce`].ParameterValue | [0]' --output text)
+          test -n "$function_arn" && test "$function_arn" != None
+          if [ "$ACTION" = collect-current-hour ]; then
+            schedule_arn=$(aws cloudformation describe-stacks --stack-name suburban-remote --query 'Stacks[0].Outputs[?OutputKey==`HourlyTelemetryScheduleArn`].OutputValue | [0]' --output text)
+            vehicle=$(aws cloudformation describe-stacks --stack-name suburban-remote --query 'Stacks[0].Parameters[?ParameterKey==`VehicleKey`].ParameterValue | [0]' --output text)
+            jq -n --arg vehicle "$vehicle" --arg schedule "$schedule_arn" --arg at "$(date -u +%Y-%m-%dT%H:%M:%SZ)" '{kind:"hourly-diagnostics",vehicleKey:$vehicle,scheduleArn:$schedule,scheduledAt:$at}' > "$work/input.json"
+          else
+            printf '%s' '{"kind":"telemetry-status"}' > "$work/input.json"
+          fi
+          aws lambda invoke --function-name "$function_arn" --cli-binary-format raw-in-base64-out --payload "file://$work/input.json" "$work/result.json" > "$work/invoke.json"
+          jq -e '.StatusCode == 200 and .FunctionError == null' "$work/invoke.json" >/dev/null
+          jq '{state,reason,hour,collectedAt,sourceObservedAt,sourceFreshness,diagnosticCalls,readings,hasFuel,hasOdometer,archiveVerified,version}' "$work/result.json" > artifacts/hourly-telemetry.json
+          jq -e --arg source "$source" '.version == $source and .state == "collected" and .diagnosticCalls == 1 and .readings > 0 and .hasFuel and .hasOdometer and .archiveVerified' artifacts/hourly-telemetry.json >/dev/null
+          aws scheduler get-schedule --name suburban-remote-hourly-telemetry --query '{expression:ScheduleExpression,state:State,retry:Target.RetryPolicy}' --output json > artifacts/hourly-telemetry-schedule.json
+          jq -e '.expression == "cron(5 * * * ? *)" and .state == "ENABLED" and .retry.MaximumRetryAttempts == 0 and .retry.MaximumEventAgeInSeconds == 60' artifacts/hourly-telemetry-schedule.json >/dev/null
+          echo 'Hourly diagnostics archive verified; fuel and odometer present; hourly schedule enabled'
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: hourly-telemetry-verification
+          path: |
+            artifacts/hourly-telemetry.json
+            artifacts/hourly-telemetry-schedule.json
+          retention-days: 7
+          if-no-files-found: ignore

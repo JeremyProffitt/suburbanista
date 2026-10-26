@@ -1,0 +1,27 @@
+{
+  "schemaVersion": "1",
+  "surface": "web",
+  "permissions": [
+    {
+      "capability": "owner-sign-in",
+      "purpose": "Identify the enrolled owner using Amazon profile:user_id; this scope does not supply vehicle consent.",
+      "requirement": "required",
+      "grantSource": "amazon-login",
+      "deniedBehavior": "Keep vehicle data and commands unavailable. Offer Amazon sign-in; never accept a client-supplied owner identity."
+    },
+    {
+      "capability": "vehicle-control",
+      "purpose": "Record the owner's explicit consent to access and control the enrolled vehicle.",
+      "requirement": "required",
+      "grantSource": "application-consent",
+      "deniedBehavior": "Do not submit vehicle requests. Explain consent on opening and provide the application Settings path to review it."
+    },
+    {
+      "capability": "background-vehicle-tracking",
+      "purpose": "Collect the enrolled vehicle's OnStar location every 15 minutes and retain observations for the chosen period, at most 90 days.",
+      "requirement": "optional",
+      "grantSource": "application-consent",
+      "deniedBehavior": "Keep scheduled location collection paused. Preserve unrelated controls and allow consent review in application Settings."
+    }
+  ]
+}

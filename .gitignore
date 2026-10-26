@@ -1,0 +1,7 @@
+/.aws-sam/
+/dist/
+/packaged.yaml
+/deployment.tar.gz
+/canary-fingerprints.json
+/deployment.log
+/mobile/cmd/mobile/AndroidManifest.xml

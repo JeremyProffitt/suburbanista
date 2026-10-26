@@ -1,0 +1,12 @@
+<application xmlns:android="http://schemas.android.com/apk/res/android">
+ <service android:name="nativewidgets.TrackingService" android:exported="false" android:process=":tracking" android:foregroundServiceType="location" android:stopWithTask="false"/>
+ <service android:name="nativewidgets.UpdateJobService" android:exported="false" android:process=":updates" android:permission="android.permission.BIND_JOB_SERVICE"/>
+ <receiver android:name="nativewidgets.CompactProvider" android:label="Suburbanista Compact" android:exported="false" android:process=":widgets">
+  <intent-filter><action android:name="android.appwidget.action.APPWIDGET_UPDATE"/><action android:name="android.intent.action.TIMEZONE_CHANGED"/><action android:name="android.intent.action.DATE_CHANGED"/><action android:name="android.intent.action.TIME_SET"/></intent-filter>
+  <meta-data android:name="android.appwidget.provider" android:resource="@xml/suburban_widget_compact_info"/>
+ </receiver>
+ <receiver android:name="nativewidgets.FullProvider" android:label="Suburbanista Full" android:exported="false" android:process=":widgets">
+  <intent-filter><action android:name="android.appwidget.action.APPWIDGET_UPDATE"/><action android:name="android.intent.action.TIMEZONE_CHANGED"/><action android:name="android.intent.action.DATE_CHANGED"/><action android:name="android.intent.action.TIME_SET"/></intent-filter>
+  <meta-data android:name="android.appwidget.provider" android:resource="@xml/suburban_widget_full_info"/>
+ </receiver>
+</application>

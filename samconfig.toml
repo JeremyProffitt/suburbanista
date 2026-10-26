@@ -1,0 +1,9 @@
+version = 0.1
+[default.deploy.parameters]
+stack_name = "suburban-remote"
+region = "us-east-1"
+s3_bucket = "aws-sam-cli-managed-default-samclisourcebucket-vpmvv29iye6w"
+s3_prefix = "suburban-remote"
+capabilities = "CAPABILITY_IAM"
+tags = "Project=Suburban-Remote CostCenter=home-iot Environment=prod ManagedBy=sam DeployedVia=github-actions Owner=jeremy"
+parameter_overrides = "PollingEnabled=true VehicleKey=truck-8f41b6d379a04ab4a8c2f7ca1268d405"

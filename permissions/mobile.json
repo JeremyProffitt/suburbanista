@@ -1,0 +1,93 @@
+{
+  "schemaVersion": "1",
+  "surface": "mobile",
+  "permissions": [
+    {
+      "capability": "network-access",
+      "purpose": "Contact the HTTPS service for sign-in, vehicle requests, and update checks.",
+      "requirement": "required",
+      "grantSource": "android-manifest",
+      "platformPermission": "android.permission.INTERNET",
+      "deniedBehavior": "Show unavailable or offline state and do not claim a request succeeded. INTERNET has no runtime permission prompt; inspect device network Settings."
+    },
+    {
+      "capability": "owner-sign-in",
+      "purpose": "Identify the enrolled owner through Amazon profile:user_id in the system browser, then finish verifier-bound polling in the app.",
+      "requirement": "required",
+      "grantSource": "amazon-login",
+      "deniedBehavior": "Do not issue a device session. Show canceled or failed sign-in and allow another sign-in attempt."
+    },
+    {
+      "capability": "vehicle-control",
+      "purpose": "Record the owner's explicit consent to access and control the enrolled vehicle.",
+      "requirement": "required",
+      "grantSource": "application-consent",
+      "deniedBehavior": "Do not submit vehicle requests. Explain consent on opening and provide application Settings to review it."
+    },
+    {
+      "capability": "phone-weather-location",
+      "purpose": "Use an age-checked approximate phone location for local weather and sunrise/sunset shading while the app is open. Send only a rounded approximate cell to Open-Meteo. Vehicle-map tracking uses its separate precise-location grant.",
+      "requirement": "optional",
+      "grantSource": "android-runtime",
+      "platformPermission": "android.permission.ACCESS_COARSE_LOCATION",
+      "runtimeMinAPI": 23,
+      "deniedBehavior": "Show weather unavailable if permission is denied or no recent phone fix exists. Request once automatically; a later Weather action is an explicit retry. Weather does not start the tracking service."
+    },
+    {
+      "capability": "phone-tracking-location",
+      "purpose": "Use precise phone GPS in the visible foreground service after the app closes. Upload movement over 50 feet at most every two minutes to the authenticated encrypted store; substitute phone position only while synchronized with the vehicle.",
+      "requirement": "optional",
+      "grantSource": "android-runtime",
+      "platformPermission": "android.permission.ACCESS_FINE_LOCATION",
+      "runtimeMinAPI": 23,
+      "deniedBehavior": "Do not start phone tracking without precise permission. Keep vehicle polling and update checks available. Android Settings can restore permission."
+    },
+    {
+      "capability": "phone-tracking-service",
+      "purpose": "Keep the authorized location service active with an ongoing notification after the activity closes.",
+      "requirement": "optional",
+      "grantSource": "android-manifest",
+      "platformPermission": "android.permission.FOREGROUND_SERVICE",
+      "deniedBehavior": "Do not claim background tracking is active if the service cannot start. Reopening the app retries within Android permission rules."
+    },
+    {
+      "capability": "phone-tracking-service-type",
+      "purpose": "Declare the location foreground-service type required by current Android versions.",
+      "requirement": "optional",
+      "grantSource": "android-manifest",
+      "platformPermission": "android.permission.FOREGROUND_SERVICE_LOCATION",
+      "deniedBehavior": "Do not start the service without the required platform permission and precise-location grant."
+    },
+    {
+      "capability": "phone-upload-wake",
+      "purpose": "Hold a bounded 25-second CPU wake lock during a GPS-triggered upload, never continuously.",
+      "requirement": "optional",
+      "grantSource": "android-manifest",
+      "platformPermission": "android.permission.WAKE_LOCK",
+      "deniedBehavior": "Allow Android to suspend the upload and do not claim a position was delivered."
+    },
+    {
+      "capability": "update-notifications",
+      "purpose": "Show the tracking notification, optional reopen reminder, and verified-update availability from six-hour background checks.",
+      "requirement": "optional",
+      "grantSource": "android-runtime",
+      "platformPermission": "android.permission.POST_NOTIFICATIONS",
+      "runtimeMinAPI": 33,
+      "deniedBehavior": "Do not rely on notifications. Keep the update prompt on next open. Explain missing permission and offer Android application Settings; request only when the OS permits. Android versions below API 33 have no runtime prompt for this permission."
+    },
+    {
+      "capability": "update-installation",
+      "purpose": "Hand an owner-approved update to the system browser and Android installer.",
+      "requirement": "optional",
+      "grantSource": "system-browser-installer",
+      "deniedBehavior": "Keep the installed app working and preserve the update prompt on next open. Trusted-source Settings belong to the browser; this app does not request REQUEST_INSTALL_PACKAGES."
+    },
+    {
+      "capability": "background-vehicle-tracking",
+      "purpose": "Allow the service to collect OnStar vehicle locations every 30 minutes; this does not use phone GPS.",
+      "requirement": "optional",
+      "grantSource": "application-consent",
+      "deniedBehavior": "Keep scheduled location collection paused. Preserve unrelated controls and allow consent review in application Settings."
+    }
+  ]
+}

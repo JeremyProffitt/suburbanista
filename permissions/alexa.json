@@ -1,0 +1,34 @@
+{
+  "schemaVersion": "1",
+  "surface": "alexa",
+  "permissions": [
+    {
+      "capability": "owner-sign-in",
+      "purpose": "Link the recognized person's Amazon account with profile:user_id and compare it with the enrolled owner.",
+      "requirement": "required",
+      "grantSource": "alexa-account-linking",
+      "deniedBehavior": "Make no vehicle request. Return the account-linking card and direct the owner to skill Settings in the Alexa app."
+    },
+    {
+      "capability": "person-identification",
+      "purpose": "Use Skills Personalization and the recognized person's linked token to authorize voice requests.",
+      "requirement": "required",
+      "grantSource": "alexa-personalization",
+      "deniedBehavior": "Reject vehicle requests without a recognized, approved, linked person. Explain the voice ID and skill personalization Settings prerequisites; do not substitute the device account."
+    },
+    {
+      "capability": "vehicle-control",
+      "purpose": "Honor the owner's explicit application consent to access and control the enrolled vehicle.",
+      "requirement": "required",
+      "grantSource": "application-consent",
+      "deniedBehavior": "Make no vehicle request. Direct the owner to the web or mobile application Settings to review vehicle consent."
+    },
+    {
+      "capability": "background-vehicle-tracking",
+      "purpose": "Honor the owner's separate optional consent for scheduled vehicle location collection.",
+      "requirement": "optional",
+      "grantSource": "application-consent",
+      "deniedBehavior": "Keep scheduled collection paused. Do not infer tracking consent from skill enablement or account linking; direct the owner to application Settings."
+    }
+  ]
+}

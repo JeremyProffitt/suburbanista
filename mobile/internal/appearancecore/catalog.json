@@ -1,0 +1,600 @@
+[
+  {
+    "id": "reactor-forge",
+    "name": "Reactor Forge"
+  },
+  {
+    "id": "ion-halo",
+    "name": "Ion Halo"
+  },
+  {
+    "id": "obsidian-monolith",
+    "name": "Obsidian Monolith"
+  },
+  {
+    "id": "crystal-prism",
+    "name": "Crystal Prism"
+  },
+  {
+    "id": "carbon-vector",
+    "name": "Carbon Vector"
+  },
+  {
+    "id": "hologram-grid",
+    "name": "Hologram Grid"
+  },
+  {
+    "id": "orbit-dock",
+    "name": "Orbit Dock"
+  },
+  {
+    "id": "titanium-iris",
+    "name": "Titanium Iris"
+  },
+  {
+    "id": "mecha-talon",
+    "name": "Mecha Talon"
+  },
+  {
+    "id": "liquid-mercury",
+    "name": "Liquid Mercury"
+  },
+  {
+    "id": "ceramic-capsule",
+    "name": "Ceramic Capsule"
+  },
+  {
+    "id": "glass-circuit",
+    "name": "Glass Circuit"
+  },
+  {
+    "id": "lunar-lattice",
+    "name": "Lunar Lattice"
+  },
+  {
+    "id": "quantum-cube",
+    "name": "Quantum Cube"
+  },
+  {
+    "id": "plasma-vortex",
+    "name": "Plasma Vortex"
+  },
+  {
+    "id": "neon-wireframe",
+    "name": "Neon Wireframe"
+  },
+  {
+    "id": "industrial-vault",
+    "name": "Industrial Vault"
+  },
+  {
+    "id": "aerogel-float",
+    "name": "Aerogel Float"
+  },
+  {
+    "id": "nanotech-scale",
+    "name": "Nanotech Scale"
+  },
+  {
+    "id": "satellite-relay",
+    "name": "Satellite Relay"
+  },
+  {
+    "id": "emerald-cathedral",
+    "name": "Emerald Cathedral"
+  },
+  {
+    "id": "magnetic-levitation",
+    "name": "Magnetic Levitation"
+  },
+  {
+    "id": "solar-flare",
+    "name": "Solar Flare"
+  },
+  {
+    "id": "deep-space",
+    "name": "Deep Space"
+  },
+  {
+    "id": "biolume-shell",
+    "name": "Biolume Shell"
+  },
+  {
+    "id": "retro-future",
+    "name": "Retro Future"
+  },
+  {
+    "id": "origami-alloy",
+    "name": "Origami Alloy"
+  },
+  {
+    "id": "cyber-rune",
+    "name": "Cyber Rune"
+  },
+  {
+    "id": "graphite-dial",
+    "name": "Graphite Dial"
+  },
+  {
+    "id": "photon-blade",
+    "name": "Photon Blade"
+  },
+  {
+    "id": "ice-core",
+    "name": "Ice Core"
+  },
+  {
+    "id": "copper-coil",
+    "name": "Copper Coil"
+  },
+  {
+    "id": "stone-matrix",
+    "name": "Stone Matrix"
+  },
+  {
+    "id": "precision-watch",
+    "name": "Precision Watch"
+  },
+  {
+    "id": "drone-swarm",
+    "name": "Drone Swarm"
+  },
+  {
+    "id": "arc-shield",
+    "name": "Arc Shield"
+  },
+  {
+    "id": "stealth-wing",
+    "name": "Stealth Wing"
+  },
+  {
+    "id": "new-year-midnight-circuit",
+    "name": "Midnight Circuit",
+    "holiday": "new-year"
+  },
+  {
+    "id": "new-year-countdown-halo",
+    "name": "Countdown Halo",
+    "holiday": "new-year"
+  },
+  {
+    "id": "new-year-confetti-prism",
+    "name": "Confetti Prism",
+    "holiday": "new-year"
+  },
+  {
+    "id": "new-year-champagne-alloy",
+    "name": "Champagne Alloy",
+    "holiday": "new-year"
+  },
+  {
+    "id": "new-year-firework-core",
+    "name": "Firework Core",
+    "holiday": "new-year"
+  },
+  {
+    "id": "new-year-skyline-neon",
+    "name": "Skyline Neon",
+    "holiday": "new-year"
+  },
+  {
+    "id": "new-year-party-chrome",
+    "name": "Party Chrome",
+    "holiday": "new-year"
+  },
+  {
+    "id": "new-year-starfall-vault",
+    "name": "Starfall Vault",
+    "holiday": "new-year"
+  },
+  {
+    "id": "new-year-aurora-clock",
+    "name": "Aurora Clock",
+    "holiday": "new-year"
+  },
+  {
+    "id": "new-year-resolution-crystal",
+    "name": "Resolution Crystal",
+    "holiday": "new-year"
+  },
+  {
+    "id": "birthday-cake-reactor",
+    "name": "Cake Reactor",
+    "holiday": "birthday"
+  },
+  {
+    "id": "birthday-candle-halo",
+    "name": "Candle Halo",
+    "holiday": "birthday"
+  },
+  {
+    "id": "birthday-gift-vault",
+    "name": "Gift Vault",
+    "holiday": "birthday"
+  },
+  {
+    "id": "birthday-balloon-orbit",
+    "name": "Balloon Orbit",
+    "holiday": "birthday"
+  },
+  {
+    "id": "birthday-confetti-forge",
+    "name": "Confetti Forge",
+    "holiday": "birthday"
+  },
+  {
+    "id": "birthday-ribbon-circuit",
+    "name": "Ribbon Circuit",
+    "holiday": "birthday"
+  },
+  {
+    "id": "birthday-party-prism",
+    "name": "Party Prism",
+    "holiday": "birthday"
+  },
+  {
+    "id": "birthday-sparkler-shield",
+    "name": "Sparkler Shield",
+    "holiday": "birthday"
+  },
+  {
+    "id": "birthday-wish-capsule",
+    "name": "Wish Capsule",
+    "holiday": "birthday"
+  },
+  {
+    "id": "birthday-celebration-crown",
+    "name": "Celebration Crown",
+    "holiday": "birthday"
+  },
+  {
+    "id": "valentines-heart-reactor",
+    "name": "Heart Reactor",
+    "holiday": "valentines"
+  },
+  {
+    "id": "valentines-rose-quartz",
+    "name": "Rose Quartz",
+    "holiday": "valentines"
+  },
+  {
+    "id": "valentines-cupid-circuit",
+    "name": "Cupid Circuit",
+    "holiday": "valentines"
+  },
+  {
+    "id": "valentines-satin-ribbon",
+    "name": "Satin Ribbon",
+    "holiday": "valentines"
+  },
+  {
+    "id": "valentines-love-letter",
+    "name": "Love Letter",
+    "holiday": "valentines"
+  },
+  {
+    "id": "valentines-twin-hearts",
+    "name": "Twin Hearts",
+    "holiday": "valentines"
+  },
+  {
+    "id": "valentines-ruby-lace",
+    "name": "Ruby Lace",
+    "holiday": "valentines"
+  },
+  {
+    "id": "valentines-petal-orbit",
+    "name": "Petal Orbit",
+    "holiday": "valentines"
+  },
+  {
+    "id": "valentines-velvet-vault",
+    "name": "Velvet Vault",
+    "holiday": "valentines"
+  },
+  {
+    "id": "valentines-candy-chrome",
+    "name": "Candy Chrome",
+    "holiday": "valentines"
+  },
+  {
+    "id": "st-patricks-shamrock-reactor",
+    "name": "Shamrock Reactor",
+    "holiday": "st-patricks"
+  },
+  {
+    "id": "st-patricks-celtic-knot",
+    "name": "Celtic Knot",
+    "holiday": "st-patricks"
+  },
+  {
+    "id": "st-patricks-emerald-clover",
+    "name": "Emerald Clover",
+    "holiday": "st-patricks"
+  },
+  {
+    "id": "st-patricks-lucky-horseshoe",
+    "name": "Lucky Horseshoe",
+    "holiday": "st-patricks"
+  },
+  {
+    "id": "st-patricks-gold-pot",
+    "name": "Gold Pot",
+    "holiday": "st-patricks"
+  },
+  {
+    "id": "st-patricks-harp-circuit",
+    "name": "Harp Circuit",
+    "holiday": "st-patricks"
+  },
+  {
+    "id": "st-patricks-celtic-shield",
+    "name": "Celtic Shield",
+    "holiday": "st-patricks"
+  },
+  {
+    "id": "st-patricks-moss-crystal",
+    "name": "Moss Crystal",
+    "holiday": "st-patricks"
+  },
+  {
+    "id": "st-patricks-clover-orbit",
+    "name": "Clover Orbit",
+    "holiday": "st-patricks"
+  },
+  {
+    "id": "st-patricks-lucky-forge",
+    "name": "Lucky Forge",
+    "holiday": "st-patricks"
+  },
+  {
+    "id": "easter-egg-reactor",
+    "name": "Egg Reactor",
+    "holiday": "easter"
+  },
+  {
+    "id": "easter-bunny-circuit",
+    "name": "Bunny Circuit",
+    "holiday": "easter"
+  },
+  {
+    "id": "easter-pastel-prism",
+    "name": "Pastel Prism",
+    "holiday": "easter"
+  },
+  {
+    "id": "easter-spring-bloom",
+    "name": "Spring Bloom",
+    "holiday": "easter"
+  },
+  {
+    "id": "easter-basket-weave",
+    "name": "Basket Weave",
+    "holiday": "easter"
+  },
+  {
+    "id": "easter-painted-shell",
+    "name": "Painted Shell",
+    "holiday": "easter"
+  },
+  {
+    "id": "easter-mosaic-egg",
+    "name": "Mosaic Egg",
+    "holiday": "easter"
+  },
+  {
+    "id": "easter-daffodil-halo",
+    "name": "Daffodil Halo",
+    "holiday": "easter"
+  },
+  {
+    "id": "easter-chick-capsule",
+    "name": "Chick Capsule",
+    "holiday": "easter"
+  },
+  {
+    "id": "easter-ribbon-nest",
+    "name": "Ribbon Nest",
+    "holiday": "easter"
+  },
+  {
+    "id": "july-fourth-liberty-reactor",
+    "name": "Liberty Reactor",
+    "holiday": "july-fourth"
+  },
+  {
+    "id": "july-fourth-stars-and-stripes",
+    "name": "Stars and Stripes",
+    "holiday": "july-fourth"
+  },
+  {
+    "id": "july-fourth-firework-eagle",
+    "name": "Firework Eagle",
+    "holiday": "july-fourth"
+  },
+  {
+    "id": "july-fourth-chrome-shield",
+    "name": "Chrome Shield",
+    "holiday": "july-fourth"
+  },
+  {
+    "id": "july-fourth-rocket-glow",
+    "name": "Rocket Glow",
+    "holiday": "july-fourth"
+  },
+  {
+    "id": "july-fourth-star-orbit",
+    "name": "Star Orbit",
+    "holiday": "july-fourth"
+  },
+  {
+    "id": "july-fourth-independence-bell",
+    "name": "Independence Bell",
+    "holiday": "july-fourth"
+  },
+  {
+    "id": "july-fourth-flag-fold",
+    "name": "Flag Fold",
+    "holiday": "july-fourth"
+  },
+  {
+    "id": "july-fourth-patriotic-prism",
+    "name": "Patriotic Prism",
+    "holiday": "july-fourth"
+  },
+  {
+    "id": "july-fourth-night-spark",
+    "name": "Night Spark",
+    "holiday": "july-fourth"
+  },
+  {
+    "id": "halloween-pumpkin-reactor",
+    "name": "Pumpkin Reactor",
+    "holiday": "halloween"
+  },
+  {
+    "id": "halloween-batwing-vault",
+    "name": "Batwing Vault",
+    "holiday": "halloween"
+  },
+  {
+    "id": "halloween-ghost-glass",
+    "name": "Ghost Glass",
+    "holiday": "halloween"
+  },
+  {
+    "id": "halloween-spider-circuit",
+    "name": "Spider Circuit",
+    "holiday": "halloween"
+  },
+  {
+    "id": "halloween-haunted-gothic",
+    "name": "Haunted Gothic",
+    "holiday": "halloween"
+  },
+  {
+    "id": "halloween-witch-crystal",
+    "name": "Witch Crystal",
+    "holiday": "halloween"
+  },
+  {
+    "id": "halloween-skull-alloy",
+    "name": "Skull Alloy",
+    "holiday": "halloween"
+  },
+  {
+    "id": "halloween-candy-corn",
+    "name": "Candy Corn",
+    "holiday": "halloween"
+  },
+  {
+    "id": "halloween-moonlit-raven",
+    "name": "Moonlit Raven",
+    "holiday": "halloween"
+  },
+  {
+    "id": "halloween-spectral-fog",
+    "name": "Spectral Fog",
+    "holiday": "halloween"
+  },
+  {
+    "id": "thanksgiving-harvest-reactor",
+    "name": "Harvest Reactor",
+    "holiday": "thanksgiving"
+  },
+  {
+    "id": "thanksgiving-maple-alloy",
+    "name": "Maple Alloy",
+    "holiday": "thanksgiving"
+  },
+  {
+    "id": "thanksgiving-acorn-vault",
+    "name": "Acorn Vault",
+    "holiday": "thanksgiving"
+  },
+  {
+    "id": "thanksgiving-cornucopia",
+    "name": "Cornucopia",
+    "holiday": "thanksgiving"
+  },
+  {
+    "id": "thanksgiving-pumpkin-bronze",
+    "name": "Pumpkin Bronze",
+    "holiday": "thanksgiving"
+  },
+  {
+    "id": "thanksgiving-wheat-halo",
+    "name": "Wheat Halo",
+    "holiday": "thanksgiving"
+  },
+  {
+    "id": "thanksgiving-turkey-feather",
+    "name": "Turkey Feather",
+    "holiday": "thanksgiving"
+  },
+  {
+    "id": "thanksgiving-cranberry-glass",
+    "name": "Cranberry Glass",
+    "holiday": "thanksgiving"
+  },
+  {
+    "id": "thanksgiving-autumn-quilt",
+    "name": "Autumn Quilt",
+    "holiday": "thanksgiving"
+  },
+  {
+    "id": "thanksgiving-hearth-stone",
+    "name": "Hearth Stone",
+    "holiday": "thanksgiving"
+  },
+  {
+    "id": "christmas-snowflake-reactor",
+    "name": "Snowflake Reactor",
+    "holiday": "christmas"
+  },
+  {
+    "id": "christmas-ornament-glass",
+    "name": "Ornament Glass",
+    "holiday": "christmas"
+  },
+  {
+    "id": "christmas-pine-circuit",
+    "name": "Pine Circuit",
+    "holiday": "christmas"
+  },
+  {
+    "id": "christmas-gift-wrap",
+    "name": "Gift Wrap",
+    "holiday": "christmas"
+  },
+  {
+    "id": "christmas-candy-cane",
+    "name": "Candy Cane",
+    "holiday": "christmas"
+  },
+  {
+    "id": "christmas-frost-crystal",
+    "name": "Frost Crystal",
+    "holiday": "christmas"
+  },
+  {
+    "id": "christmas-winter-star",
+    "name": "Winter Star",
+    "holiday": "christmas"
+  },
+  {
+    "id": "christmas-gingerbread-forge",
+    "name": "Gingerbread Forge",
+    "holiday": "christmas"
+  },
+  {
+    "id": "christmas-reindeer-alloy",
+    "name": "Reindeer Alloy",
+    "holiday": "christmas"
+  },
+  {
+    "id": "christmas-aurora-snow",
+    "name": "Aurora Snow",
+    "holiday": "christmas"
+  }
+]

@@ -1,0 +1,16 @@
+# Frozen from the template successfully deployed by run 39783999315,
+# commit 9b2acb5001e2124343d6e25511be47d471497588.
+Resources:
+  StateTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      AttributeDefinitions:
+        - AttributeName: pk
+          AttributeType: S
+        - AttributeName: sk
+          AttributeType: S
+      KeySchema:
+        - AttributeName: pk
+          KeyType: HASH
+        - AttributeName: sk
+          KeyType: RANGE

@@ -1,0 +1,27 @@
+name: Prepare pinned Android SDK
+description: Prepare the project's existing Android toolchain on a local Linux x64 runner.
+runs:
+  using: composite
+  steps:
+    - name: Prepare Android command-line tools and pinned packages
+      shell: bash
+      run: |
+        set -euo pipefail
+        test "$RUNNER_OS" = Linux
+        test "$(uname -m)" = x86_64
+        java -version
+        sdk_root="${ANDROID_HOME:-$RUNNER_TOOL_CACHE/android-sdk}"
+        cli_root="$sdk_root/cmdline-tools/15859902"
+        if ! test -x "$cli_root/bin/sdkmanager"; then
+          sdk_temp="$(mktemp -d "$RUNNER_TEMP/suburban-sdk.XXXXXX")"
+          trap 'rm -rf "$sdk_temp"' EXIT
+          curl --fail --silent --show-error --location --retry 2 --connect-timeout 15 --max-time 300 https://dl.google.com/android/repository/commandlinetools-linux-15859902_latest.zip -o "$sdk_temp/tools.zip"
+          printf '%s  %s\n' 4e4c464f145a7512b57d088ac6c278c03c9eea610886b35a5e0804e74eedf583 "$sdk_temp/tools.zip" | sha256sum --check --status
+          unzip -q "$sdk_temp/tools.zip" -d "$sdk_temp/unpacked"
+          mkdir -p "$cli_root"
+          cp -R "$sdk_temp/unpacked/cmdline-tools/." "$cli_root/"
+        fi
+        export ANDROID_HOME="$sdk_root" ANDROID_SDK_ROOT="$sdk_root"
+        "$cli_root/bin/sdkmanager" --sdk_root="$sdk_root" --licenses < <(printf 'y\n%.0s' {1..100}) > "$RUNNER_TEMP/suburban-sdk-licenses.log"
+        "$cli_root/bin/sdkmanager" --sdk_root="$sdk_root" "platform-tools" "platforms;android-36" "build-tools;$ANDROID_BUILD_TOOLS_VERSION" "ndk;$ANDROID_NDK_VERSION"
+        printf 'ANDROID_HOME=%s\nANDROID_SDK_ROOT=%s\nANDROID_NDK_HOME=%s\nANDROID_BUILD_TOOLS=%s\n' "$sdk_root" "$sdk_root" "$sdk_root/ndk/$ANDROID_NDK_VERSION" "$sdk_root/build-tools/$ANDROID_BUILD_TOOLS_VERSION" >> "$GITHUB_ENV"

@@ -1,0 +1,15 @@
+{
+  "method": "POST",
+  "url": "https://na-mobile-api.gm.com/mbff/garage/v1",
+  "headers": {
+    "Accept": "application/json",
+    "Accept-Encoding": "gzip",
+    "Accept-Language": "en-US",
+    "Content-Type": "text/plain; charset=utf-8",
+    "appversion": "myOwner-chevrolet-android-8.5.0-0",
+    "locale": "en-US",
+    "User-Agent": "myOwner App",
+    "push-request": "allow"
+  },
+  "body": "query getVehiclesMBFF {vehicles {vin vehicleId make model nickName year imageUrl onstarCapable vehicleType roleCode onstarStatusCode onstarAccountNumber preDelivery orderNum orderStatus}}"
+}

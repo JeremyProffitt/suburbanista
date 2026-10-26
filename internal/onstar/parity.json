@@ -1,0 +1,57 @@
+{
+  "upstream": {
+    "repository": "https://github.com/BigThunderSR/OnStarJS",
+    "commit": "1ae0cbb6fd7601e871b67cd0cda02c80c4354f9d",
+    "package": "onstarjs2",
+    "version": "2.16.7",
+    "licenses": ["../../third_party/onstarjs2/LICENSE", "../../third_party/onstarjs2/LICENSE-Original"],
+    "sourceSHA256": {
+      "src/auth/GMAuth.ts": "c45e47e9a8f2571db64b24605b6b13398344f5d2df573cdf8c220165a54bac53",
+      "src/RequestService.ts": "0a697569285c27b390af002a5ed72b9b5ca69689ae62b6ab0404462436f4b525",
+      "src/onStarAppConfig.json": "d9976291c9aeb7a4b89a0a12dcbcaf0578269e46552a1258aacd68d1438815b8",
+      "src/types.ts": "df06a776b502e9a2a2b704ee2b29b4e666d27e4e165712323a17082ed70b41f5",
+      "src/Request.ts": "5e8c2d9835fe222ab1ec0b3b93956fcef745ec597c7cfdb44e579b8ad8e1832b"
+    }
+  },
+  "status": "source-and-synthetic-coverage-with-bounded-live-evidence",
+  "liveProof": "Enrollment, refresh, vehicle membership and cached location status passed. One retained LOCK receipt is outcome-unknown; no confirmed actuation result is claimed.",
+  "liveEvidence": [
+    "artifacts/onstar-readiness.json",
+    "artifacts/onstar-proof-39868011021/onstar-proof.json",
+    "artifacts/onstar-proof-39868723039/onstar-proof.json",
+    "artifacts/vehicle-test/lock.json",
+    "artifacts/capability-audit.json"
+  ],
+  "contracts": [
+    {"source": "GMAuth.ts:3025-3053,3140-3247", "go": "NewAuthorization, Client.Enroll", "behavior": "Owner completes sign-in/MFA in a fresh Playwright browser; callback captured privately in memory for the same PKCE S256 flow, fixed public client and registered custom redirect.", "tests": ["TestPKCEStateExpiryReplay", "TestEnrollmentAndRefreshIdentity", "TestPlaywrightCallbackCapture"]},
+    {"source": "GMAuth.ts:3319-3349", "go": "Client.Refresh", "behavior": "One refresh attempt. Preserve refresh token and obtained time when replacement omitted; caller must persist rotation before later work.", "tests": ["TestEnrollmentAndRefreshIdentity"]},
+    {"source": "GMAuth.ts:2676-2744", "go": "Client.Exchange", "behavior": "Form-encoded GM exchange uses protected original device identity. Unverified GM token claims only check vehicle membership; missing membership returns vehicle-not-linked without discarding B2C grant.", "tests": ["TestExchangeVehicleBindingAndBootstrap"]},
+    {"source": "RequestService.ts:542-576,970-988,1429-1449; Request.ts:44-53", "go": "Client.Vehicles", "behavior": "POST bare GraphQL query as text/plain; charset=utf-8. Reject partial GraphQL errors. No JSON envelope is added.", "tests": ["TestPinnedGarageWireFixture", "TestReadonlyFailuresNeverRetry"]},
+    {"source": "RequestService.ts:780-814", "go": "Client.Location", "behavior": "One cached or wake digitaltwin read, exposing pending state only. Poll scheduling remains the future worker's responsibility.", "tests": ["TestLocationPendingAndUnknownFix"]},
+    {"source": "RequestService.ts:526-540; types.ts:251-309", "go": "Client.Diagnostics, Client.ReadSnapshot", "behavior": "Fixed healthstatus GET; selected typed diagnostic fields, explicit unknown freshness when a provider observation timestamp is absent; no automatic live probe.", "tests": ["TestOrdinaryReadWireAndSafeSnapshots", "TestSnapshotPrivacyPreservesDatesAndBounds"]},
+    {"source": "RequestService.ts:578-778", "go": "Client.VehicleDetails, Client.OnstarPlan, Client.Recalls, Client.Warranty, Client.SxmSubscription", "behavior": "Five pinned garage GraphQL read selections. Private identifiers and raw provider errors are excluded from snapshots. Only OnStar plan accepts explicitly labeled partial data; ambiguous command eligibility fails closed.", "tests": ["TestOrdinaryReadWireAndSafeSnapshots", "TestReadPartialAbsentAndAmbiguousEligibility", "TestOwnerReadBindingAndLocationNoWake"]},
+    {"source": "RequestService.ts:112-261,826-900,963-968", "go": "Client.Submit", "behavior": "Exactly one fixed-v3 POST for start/cancelStart, lock/unlock door/trunk, alert/cancelAlert and flash/stopLights. Preserve pinned nested door/trunk request bodies; alert body is top-level. Remove safety overrides. Parameters and method/path/body/header assertions have synthetic coverage only.", "tests": ["TestCommandWireBodiesAndSingleSubmission", "TestCommandFailuresNeverFallbackOrRetry", "TestCommandOptionsFailBeforeSend"]},
+    {"source": "RequestService.ts:1027-1119,1458-1470", "go": "Client.CommandStatus", "behavior": "Exactly one GET to a same-origin provider status reference. Explicit HTTPS port 443 on the exact configured host is canonicalized; other origins remain rejected. Accept nested or flat status envelopes; only explicit terminal status confirms success. Missing/unknown evidence remains outcome-unknown. Diagnostics disclose categories and presence flags, never provider identifiers or URLs.", "tests": ["TestCommandResultFixtures", "TestCommandStatusRejectsUntrustedReferencesAndMismatches", "TestCommandHTTPFixtureReplay", "TestCommandStatusAcceptsOnlyDefaultHTTPSPort", "TestCommandDiagnosticReasonMatchesParseFailure"]}
+  ],
+  "intentionalDeviations": [
+    "OAuth authorization and token URLs use the /oauth2/v2.0/ endpoints published by GM's discovery document. The discovery URL remains under /v2.0/.well-known/. Do not copy the stale fallback endpoints in upstream setupOpenIDClient; its normal path consumes discovered endpoints. TestPublishedOAuthEndpoints locks this distinction.",
+    "Owner-authorized Playwright capture handles the final redirect in memory; password/MFA entry remains manual. No evasion, password/TOTP collection, registry handler, traces/HAR/screenshots or automatic full reauthentication.",
+    "State is checked with constant-time comparison, has a ten-minute deadline, and is consumed once.",
+    "Identity is bound to sub from a signed enrollment ID token. Every B2C access token is verified against fixed-host JWKS, discovery issuer, exact client audience, RS256, expiry and prior subject; refreshed ID tokens, if present, must match. Compatibility of these stricter checks remains a live feasibility gate.",
+    "No refresh-token age is inferred from upstream's unsupported sixty-day fallback; provider rejection remains explicit.",
+    "Raw provider errors, tokens, VINs and coordinates never enter diagnostic output.",
+    "There are no transport retries, implicit credential deletion or v1 action fallback. The durable command service calls fixed-v3 transport with fresh owner checks, conditional dispatch, one-submission semantics and persistent kill switches. The user explicitly removed PIN requirements. New action routes require recent provider eligibility plus explicit owner enablement; source transport coverage does not imply vehicle support.",
+    "Read snapshots expose selected typed fields rather than raw provider payloads. They distinguish fetchedAt from provider observation time, bound response sizes, redact private identifiers and preserve unavailable/partial states. They do not infer coordinates, enable commands, or implement EV authentication.",
+    "Command POST and status GET have fifteen-second context deadlines. A submitted/pending response is never reported as success; malformed or ambiguous post-send results remain outcome-unknown. Provider HTTP 4xx is a terminal rejection and never triggers a second submission.",
+    "The attended helper writes a pending-verification seed before linkage and immediately persists a rotated refresh token before later requests. Failed linkage writes vehicle-not-linked and retains the grant.",
+    "The seed includes device_id_sha256 to bind import to the existing ONSTAR_DEVICE_ID, and provider_state to retain a failed or incomplete linkage result.",
+    "Persistent non-secret local metadata limits attended enrollment to two attempts and imposes a six-hour cooldown after auth endpoint HTTP 401 or 403, or a bounded HTTP 200 HTML Access Denied response. Vehicle endpoint denials do not trigger this global cooldown. A kernel-held nonblocking exclusive file lock is released on process exit; its pathname remains stable. The attempt budget is independent of ENROLLMENT_VERSION and is never reset by version changes."
+  ],
+  "unverified": [
+    "Live schemas and optional fields for the six newly ported ordinary reads.",
+    "Actual eligibility and confirmed terminal outcomes for every action; the original unknown LOCK result remains unknown.",
+    "Coordinate, accuracy and fix timestamp paths: FixAvailable remains false with fix-schema-unverified.",
+    "Scheduled four-slot location evidence and location history; prior cold-start receipts prove only cached pending-status retrieval.",
+    "Applicability and separate authorization for the four upstream EV methods; commented-out charging-profile methods are not working upstream APIs."
+  ]
+}

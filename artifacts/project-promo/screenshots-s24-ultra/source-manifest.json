@@ -1,0 +1,315 @@
+{
+  "provenance": "Current Go homescene/mapview renderer and Fyne app capture. S24 Ultra-sized renders, not physical device captures. Real AWS/HERE satellite imagery of public Washington Monument demonstration location. Weather, time, readings and vehicle position are sample data. No owner location used or vehicle commands sent.",
+  "scenes": [
+    {
+      "background": "charlotte",
+      "buttonStyle": "reactor-forge",
+      "data": "actual AWS satellite imagery of public Washington Monument area; sample vehicle readings and position",
+      "deviceCapture": false,
+      "file": "01-charlotte-day-reactor.png",
+      "height": 3120,
+      "kind": "rendered-current-app-scene",
+      "sampleHour": 12,
+      "weather": "Clear daylight",
+      "width": 1440
+    },
+    {
+      "background": "beach",
+      "buttonStyle": "ion-halo",
+      "data": "actual AWS satellite imagery of public Washington Monument area; sample vehicle readings and position",
+      "deviceCapture": false,
+      "file": "02-beach-sunrise-ion.png",
+      "height": 3120,
+      "kind": "rendered-current-app-scene",
+      "sampleHour": 6,
+      "weather": "Sunrise",
+      "width": 1440
+    },
+    {
+      "background": "yosemite-01",
+      "buttonStyle": "crystal-prism",
+      "data": "actual AWS satellite imagery of public Washington Monument area; sample vehicle readings and position",
+      "deviceCapture": false,
+      "file": "03-yosemite-snow-crystal.png",
+      "height": 3120,
+      "kind": "rendered-current-app-scene",
+      "sampleHour": 12,
+      "weather": "Snow",
+      "width": 1440
+    },
+    {
+      "background": "grand-canyon-07",
+      "buttonStyle": "carbon-vector",
+      "data": "actual AWS satellite imagery of public Washington Monument area; sample vehicle readings and position",
+      "deviceCapture": false,
+      "file": "04-canyon-sunset-carbon.png",
+      "height": 3120,
+      "kind": "rendered-current-app-scene",
+      "sampleHour": 18,
+      "weather": "Sunset",
+      "width": 1440
+    },
+    {
+      "background": "neon-harbor",
+      "buttonStyle": "hologram-grid",
+      "data": "actual AWS satellite imagery of public Washington Monument area; sample vehicle readings and position",
+      "deviceCapture": false,
+      "file": "05-neon-harbor-night-hologram.png",
+      "height": 3120,
+      "kind": "rendered-current-app-scene",
+      "sampleHour": 23,
+      "weather": "Night",
+      "width": 1440
+    },
+    {
+      "background": "country",
+      "buttonStyle": "obsidian-monolith",
+      "data": "actual AWS satellite imagery of public Washington Monument area; sample vehicle readings and position",
+      "deviceCapture": false,
+      "file": "06-country-rain-obsidian.png",
+      "height": 3120,
+      "kind": "rendered-current-app-scene",
+      "sampleHour": 14,
+      "weather": "Rain",
+      "width": 1440
+    },
+    {
+      "background": "mountains",
+      "buttonStyle": "titanium-iris",
+      "data": "actual AWS satellite imagery of public Washington Monument area; sample vehicle readings and position",
+      "deviceCapture": false,
+      "file": "07-mountains-fog-titanium.png",
+      "height": 3120,
+      "kind": "rendered-current-app-scene",
+      "sampleHour": 8,
+      "weather": "Fog",
+      "width": 1440
+    },
+    {
+      "background": "aurora-city",
+      "buttonStyle": "orbit-dock",
+      "data": "actual AWS satellite imagery of public Washington Monument area; sample vehicle readings and position",
+      "deviceCapture": false,
+      "file": "08-aurora-blue-hour-orbit.png",
+      "height": 3120,
+      "kind": "rendered-current-app-scene",
+      "sampleHour": 19,
+      "weather": "Blue hour",
+      "width": 1440
+    },
+    {
+      "background": "yosemite-03",
+      "buttonStyle": "reactor-forge",
+      "data": "actual AWS satellite imagery of public Washington Monument area; sample vehicle readings and position",
+      "deviceCapture": false,
+      "file": "09-yosemite-day-reactor.png",
+      "height": 3120,
+      "kind": "rendered-current-app-scene",
+      "sampleHour": 12,
+      "weather": "Clear daylight",
+      "width": 1440
+    },
+    {
+      "background": "beach",
+      "buttonStyle": "crystal-prism",
+      "data": "actual AWS satellite imagery of public Washington Monument area; sample vehicle readings and position",
+      "deviceCapture": false,
+      "file": "10-beach-night-crystal.png",
+      "height": 3120,
+      "kind": "rendered-current-app-scene",
+      "sampleHour": 23,
+      "weather": "Night",
+      "width": 1440
+    },
+    {
+      "background": "charlotte",
+      "buttonStyle": "carbon-vector",
+      "data": "actual AWS satellite imagery of public Washington Monument area; sample vehicle readings and position",
+      "deviceCapture": false,
+      "file": "11-charlotte-storm-carbon.png",
+      "height": 3120,
+      "kind": "rendered-current-app-scene",
+      "sampleHour": 16,
+      "weather": "Thunderstorm",
+      "width": 1440
+    },
+    {
+      "background": "grand-canyon-02",
+      "buttonStyle": "ion-halo",
+      "data": "actual AWS satellite imagery of public Washington Monument area; sample vehicle readings and position",
+      "deviceCapture": false,
+      "file": "12-canyon-day-ion.png",
+      "height": 3120,
+      "kind": "rendered-current-app-scene",
+      "sampleHour": 12,
+      "weather": "Clear daylight",
+      "width": 1440
+    }
+  ],
+  "captures": [
+    {
+      "file": "01-charlotte-day-reactor.png",
+      "width": 1440,
+      "height": 3120,
+      "sha256": "0af2aaa199b1b556fe4e36cdccfd96c8786b087819e9993fdc200c5068165df7",
+      "kind": "rendered-app-screen"
+    },
+    {
+      "file": "02-beach-sunrise-ion.png",
+      "width": 1440,
+      "height": 3120,
+      "sha256": "1bfa6a844e49ae192e02ef295db7457a15ae8dfd6a909acdf25b7c6076ac1bd5",
+      "kind": "rendered-app-screen"
+    },
+    {
+      "file": "03-yosemite-snow-crystal.png",
+      "width": 1440,
+      "height": 3120,
+      "sha256": "a168aa2a8747e928bcbbff70ab902fde003805dcd81a144d58f18dacad574069",
+      "kind": "rendered-app-screen"
+    },
+    {
+      "file": "04-canyon-sunset-carbon.png",
+      "width": 1440,
+      "height": 3120,
+      "sha256": "0dfd3052b532720333729bfaf395e1a59cd09eb4195c0b677231f22a06eace13",
+      "kind": "rendered-app-screen"
+    },
+    {
+      "file": "05-neon-harbor-night-hologram.png",
+      "width": 1440,
+      "height": 3120,
+      "sha256": "eb35c57bd7c3ea1d1d5063b4df3873278e975eef32f7f64d723aa325b8ce2b3d",
+      "kind": "rendered-app-screen"
+    },
+    {
+      "file": "06-country-rain-obsidian.png",
+      "width": 1440,
+      "height": 3120,
+      "sha256": "04e8979e81ff4d0dbb6e7ab01a27dcf529056a38c16ea9173d70f90ca4ae0623",
+      "kind": "rendered-app-screen"
+    },
+    {
+      "file": "07-mountains-fog-titanium.png",
+      "width": 1440,
+      "height": 3120,
+      "sha256": "51121dd234e77b1d676a9b6fd4c434ce581df64f78d613dc6dd73e708b2dbeb0",
+      "kind": "rendered-app-screen"
+    },
+    {
+      "file": "08-aurora-blue-hour-orbit.png",
+      "width": 1440,
+      "height": 3120,
+      "sha256": "ae0b2f0014b33e392f024fc2535342ba2fa93cccb0a42a0007be0e67ac8beff5",
+      "kind": "rendered-app-screen"
+    },
+    {
+      "file": "09-yosemite-day-reactor.png",
+      "width": 1440,
+      "height": 3120,
+      "sha256": "025e68f96f6d31db2c179f49683ebd3aec0e3907f16a11cf3764a62568432592",
+      "kind": "rendered-app-screen"
+    },
+    {
+      "file": "10-beach-night-crystal.png",
+      "width": 1440,
+      "height": 3120,
+      "sha256": "7d248fed0d16fd46851c579f97e9ecb9cefeb3bea08d45d5ae28ea8661ab6868",
+      "kind": "rendered-app-screen"
+    },
+    {
+      "file": "11-charlotte-storm-carbon.png",
+      "width": 1440,
+      "height": 3120,
+      "sha256": "228627b6d4f45ec8f15f8716ca0e823cbb84af6d8b99ae86d435f40b41d34300",
+      "kind": "rendered-app-screen"
+    },
+    {
+      "file": "12-canyon-day-ion.png",
+      "width": 1440,
+      "height": 3120,
+      "sha256": "6cef55b7214a4bf1020d54ab486998d300e5ffe55866b3cb080e1a5272afc7de",
+      "kind": "rendered-app-screen"
+    },
+    {
+      "file": "contact-sheet.png",
+      "width": 1440,
+      "height": 2340,
+      "sha256": "419798680f0cedabb149d5ddb5c85158954487b1344eb01826d847bc14d9de37",
+      "kind": "contact-sheet"
+    },
+    {
+      "file": "display-landscape.png",
+      "width": 3120,
+      "height": 1440,
+      "sha256": "5fa4823d87347751780cdae88a5606cee63694d571c6167d2a1c87bd2ba120f9",
+      "kind": "rendered-app-screen"
+    },
+    {
+      "file": "display-portrait.png",
+      "width": 1440,
+      "height": 3120,
+      "sha256": "a742ac359685430cfd337ad7037849ce9dd3758dcc662171f1ef3012a1b4b607",
+      "kind": "rendered-app-screen"
+    },
+    {
+      "file": "options-appearance-landscape.png",
+      "width": 3120,
+      "height": 1440,
+      "sha256": "f5fb1c8f9fab9426adf5ad9bdb389531f4a6d58d4016359e0a8c5d0b80e8cf9d",
+      "kind": "rendered-app-screen"
+    },
+    {
+      "file": "options-appearance-portrait.png",
+      "width": 1440,
+      "height": 3120,
+      "sha256": "35deb4af788ebb72be112ebc99413b3fed25000ad5c0be8efc6424808c549288",
+      "kind": "rendered-app-screen"
+    },
+    {
+      "file": "options-rotation-landscape.png",
+      "width": 3120,
+      "height": 1440,
+      "sha256": "b09ed34710727a5345fd5f59c0cdf56178187835c55fbedb7b9d476f02e8a0d3",
+      "kind": "rendered-app-screen"
+    },
+    {
+      "file": "options-rotation-portrait.png",
+      "width": 1440,
+      "height": 3120,
+      "sha256": "c36991002d660567d61111c9ab0eed0b3fc237b29c052037aaa30955faa442ca",
+      "kind": "rendered-app-screen"
+    },
+    {
+      "file": "options-settings-landscape.png",
+      "width": 3120,
+      "height": 1440,
+      "sha256": "22432e12d475e3db930c932afa364697c4d04801d5e9af274d5ffd0b342a5c67",
+      "kind": "rendered-app-screen"
+    },
+    {
+      "file": "options-settings-portrait.png",
+      "width": 1440,
+      "height": 3120,
+      "sha256": "712d348f7a87b2ffa37bb7aa20f283dc5dd7404571f807d33459cf3c5d4c9450",
+      "kind": "rendered-app-screen"
+    }
+  ],
+  "screenCount": 20,
+  "phone": "Samsung Galaxy S24 Ultra sizing, not physical device capture",
+  "portraitPixels": [
+    1440,
+    3120
+  ],
+  "portraitRatio": "6:13 (9:19.5)",
+  "officialScreenSource": "https://www.samsung.com/ae/support/mobile-devices/what-are-the-sizes-and-the-resolution-of-the-new-s24-series/",
+  "map": {
+    "location": "Public Washington Monument / National Mall demonstration",
+    "source": "Existing Amazon Location Satellite renderer",
+    "credits": "AWS, HERE (provider descriptor attribution burned into image)",
+    "file": "../map/public-demo-satellite.png",
+    "sha256": "7f2e81f0d9d4250fd179ff2c8478c1d54e27e4115b46aaee4737e2d8910f71d8",
+    "ownerLocationUsed": false
+  },
+  "verification": "20 image dimensions/PNG decoding PASS; scene/contactsheet/settings/landscape visual inspection PASS; no private location used"
+}

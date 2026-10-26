@@ -1,0 +1,238 @@
+# Suburban Remote backlog
+
+Backlog items are deliberately deferred. They are NOT plan items: the unattended run never builds, tests, or claims them. The single source of truth for committed work is `C:\dev\Suburban-Remote\plan.md`. An item moves into the plan only after Jeremy decides so; the plan then gives it a named milestone item with a command-based definition of done. Source: persona panel review round 2, 2026-10-22.
+
+## Proposed features awaiting operator decision
+
+- [ ] alexa-vehicle-status-intents — Read-only Alexa intents for fuel, tire pressure, miles, oil, weekly miles, oil-change due, and a "how's the truck?" summary, answered from cached data with its age.
+  - Value: trip readiness from the kitchen without the phone; optional "want me to start it?" enters the normal PIN-confirmed start.
+  - Implementation: `cmd/alexa` intents call `internal/vehicle` / `internal/insights` reads (GetItem/Query only, 2-second target); person-level linking; routine-launched starts only brief, never start without PIN.
+  - Data: vehicle-health-snapshot items, mileage summaries, latest location, audit records; no live GM call in the voice request.
+  - Cost: none.
+- [ ] diagnostics-threshold-alerts — Owner thresholds (tire below placard minus 3 psi, oil life below 15 percent, fuel below 15 percent) raise a banner, app notification, and event, with hysteresis.
+  - Value: catches a soft tire or due oil change before it becomes a problem.
+  - Implementation: pure-Go `internal/vehicle/thresholds.go` in the worker after each snapshot; `alert#<kind>` State items; app reads on open; email via `internal/notify`.
+  - Data: vehicle-health-snapshot values; owner placard pressures.
+  - Cost: negligible.
+- [ ] recall-and-plan-watch — Weekly read-only check of recalls, warranty, OnStar plan, and SiriusXM subscription; banner and one notification on change.
+  - Value: learn about a recall or lapsing OnStar plan before remote start stops working.
+  - Implementation: weekly Scheduler schedule into the FIFO queue; worker calls ported getVehicleRecallInfo, getWarrantyInfo, getOnstarPlan, getSxmSubscriptionInfo; diffs `account#latest`.
+  - Data: OnStarJS2 account/vehicle GraphQL reads (loosely typed).
+  - Cost: negligible.
+- [ ] remote-start-runtime-tracker — After a confirmed start, show an estimated "engine running, about N min left" countdown with Stop and Extend.
+  - Value: avoids an accidental second start; tells whether it is still running.
+  - Implementation: `engineRunEstimate` on State from start/cancelStart terminal results; server-rendered "until HH:MM".
+  - Data: start()/cancelStart() terminal results; runtime measured on the vehicle.
+  - Cost: none.
+- [ ] favorites-quick-row — Up to four large favorite buttons at the top of web and mobile dashboards.
+  - Value: one-thumb access to daily commands.
+  - Implementation: `prefs#favorites` validated against the capability matrix; high-risk favorites keep confirmation; no launcher widgets (would need non-Go code).
+  - Data: local preferences.
+  - Cost: none.
+- [ ] place-arrival-departure-events — Presence per named place and arrival/departure events with hysteresis, timeline entries, and optional email.
+  - Value: one message when the car gets home; a presence signal for home automation.
+  - Implementation: classifier in a post-observation worker hook with conditional-write dedup; events share location retention.
+  - Data: persisted location fixes; named places.
+  - Cost: negligible.
+- [ ] park-guard-movement-alert — Armed park guard raises one alert when two consecutive fresh fixes are beyond a distance threshold from the anchor.
+  - Value: early theft/tow warning within about 15 to 30 minutes.
+  - Implementation: `ParkGuard` State item; pure-Go `internal/guard` in the post-observation hook; email via `internal/notify`; no faster polling, no automatic actuation.
+  - Data: location fixes; lock/unlock/start audit records.
+  - Cost: negligible.
+- [ ] unlocked-overnight-reminder — At an owner-set time, remind if the last door command through this system was an unlock with no later lock.
+  - Value: catches a remote unlock that was never relocked.
+  - Implementation: daily Scheduler cron; worker evaluates the lock-assurance projection with zero GM calls; email link requires login.
+  - Data: command audit trail.
+  - Cost: negligible.
+- [ ] trip-segmentation — Coarse trips and parked periods from 15-minute fixes, with sampled minimum distance, confidence, and curfew highlighting.
+  - Value: answers "was it home by 11?" without extra pings.
+  - Implementation: `internal/insights/trips` incremental after each observation; `TRIP#` items inherit the earliest fix's `expiresAt`.
+  - Data: persisted location observations.
+  - Cost: negligible.
+- [ ] odometer-mileage-ledger — Daily, weekly, and monthly miles from odometer deltas.
+  - Value: accurate mileage for tax or lease logs.
+  - Implementation: `internal/insights/mileage` over `DIAG#` snapshots; `SUMMARY#<date>` counters with 90-day TTL.
+  - Data: diagnostics or digitaltwin odometer element.
+  - Cost: negligible.
+- [ ] fuel-economy-trend — Estimated per-fill-up and over-time fuel economy, with towing tags and optional fill-up cost.
+  - Value: shows falling economy and towing cost.
+  - Implementation: `internal/insights/fuel` over snapshots; server-side SVG chart, no JavaScript.
+  - Data: fuel level and lifetime economy elements; mileage ledger; owner tank capacity.
+  - Cost: none.
+- [ ] maintenance-countdown — Oil life projection, tire pressure vs placard, owner mileage intervals, recalls, and warranty end.
+  - Value: book service before the dash warning.
+  - Implementation: `internal/insights/maintenance` linear projection; owner intervals in State.
+  - Data: diagnostics, mileage ledger, recall-and-plan-watch.
+  - Cost: negligible.
+- [ ] diagnostic-trend-charts — 90-day sparklines for numeric elements and a journal of status and DTC changes.
+  - Value: finds a slow leak or weak battery; dated fault-code record.
+  - Implementation: Fiber page with inline SVG; `HEALTH#` change items with 90-day TTL.
+  - Data: diagnosticElements and advDiagnostics.
+  - Cost: none.
+- [ ] parked-dwell-analysis — Parked time per named place, nights away, and longest parked-away periods.
+  - Value: "how many nights was it not home this month".
+  - Implementation: labels trip output against named places; `DWELL#` items.
+  - Data: location, trips, named places.
+  - Cost: none.
+- [ ] service-handoff-session — Valet/service mode with before/after location summary and diagnostics comparison.
+  - Value: factual evidence and health comparison for the service advisor.
+  - Implementation: `HandoffSession` State item; read-only location and diagnostics operations; park guard suspended.
+  - Data: location(), diagnostics().
+  - Cost: negligible.
+- [ ] mechanic-health-sheet — Printable health sheet with diagnostics, DTCs, recalls, warranty, and plan, without VIN or location.
+  - Value: one page to hand a mechanic.
+  - Implementation: owner-only `/health-sheet` template with print CSS; 24-hour cache.
+  - Data: diagnostics, recall, warranty, plan reads.
+  - Cost: negligible.
+- [ ] alexa-household-whereabouts-policy — Owner setting for who may ask Alexa read-only questions: owner voice only (default) or anyone on linked devices.
+  - Value: family can ask whether the car is home, by explicit owner choice.
+  - Implementation: boolean on the consent record; `cmd/alexa` compares personId.
+  - Data: latest location, named places, lock-assurance projection.
+  - Cost: none.
+- [ ] owner-data-export-and-delete — On-demand export (JSON, GPX, CSV) of retained data and "delete all my data".
+  - Value: archive, tax mileage, wipe before sale.
+  - Implementation: streamed paged Query with no-store headers, nothing written to S3; delete via purge reference and counts-only receipt.
+  - Data: local Location and State tables.
+  - Cost: negligible.
+- [ ] garage-safe-start-guard — Remote-start guard against attached-garage carbon monoxide: Home-zone or stale location needs a second confirmation; Alexa refuses; optional garage-door interlock.
+  - Value: prevents the most dangerous misuse of remote start.
+  - Implementation: pre-dispatch guard in `internal/commands` with a fresh fix; optional HMAC-signed garage-state endpoint.
+  - Data: location(), start(); optional home-automation garage state.
+  - Cost: negligible.
+- [ ] alexa-panic-alert — Alexa panic intent sends horn and lights for a fixed duration; web/mobile long-press panic button.
+  - Value: hands-free attention at the vehicle at night.
+  - Implementation: alert()/cancelAlert() without DoorOpen/IgnitionOn overrides; panic priority over location slots.
+  - Data: alert(), cancelAlert(), flashLights(), stopLights().
+  - Cost: negligible.
+- [ ] active-sessions-review — Security page listing device handles, web sessions, and Alexa bindings with per-item revoke.
+  - Value: cut off one lost phone without relinking everything.
+  - Implementation: Query grant records; `lastUsedAt` updated at most once per 15 minutes (partly covered by the plan's device-family list).
+  - Data: local grant records.
+  - Cost: negligible.
+- [ ] provider-health-and-coverage — Provider health banner and per-day/30-day polling coverage report.
+  - Value: trust level for mileage and trips; GM reachability before a cold start.
+  - Implementation: `SUMMARY#` counters and a `ProviderHealth` item; one GetItem per read.
+  - Data: local attempt/observation outcomes.
+  - Cost: negligible.
+- [ ] monthly-digest-email — Monthly totals email: miles, trips, economy, maintenance, recalls, coverage.
+  - Value: passive monthly check.
+  - Implementation: Scheduler cron to a Go handler with no GM access; `internal/notify`.
+  - Data: derived local items.
+  - Cost: negligible.
+- [ ] command-progress-follow-up — Alexa progressive response, short wait for a terminal result, and a "did it work?" intent.
+  - Value: no repeated voice command.
+  - Implementation: Directive service call in a goroutine; GetItem polling until the deadline.
+  - Data: command records; Alexa apiAccessToken.
+  - Cost: negligible.
+- [ ] command-completion-notification — Alexa Proactive Events notification when a voice command finishes after the session ended.
+  - Value: confirmation reaches the Echo after walking away.
+  - Implementation: worker calls the Proactive Events API with a new skill-messaging secret (NoEcho, worker only).
+  - Data: terminal command results; owner Alexa userId.
+  - Cost: negligible.
+- [ ] start-reminders — Reminders to start the truck (never a deferred start), voice or recurring, with optional NWS forecast filter.
+  - Value: warm-up habit with the owner present for every start.
+  - Implementation: Alexa Reminders API or a Scheduler cron writing a pending reminder; no command record written.
+  - Data: Alexa Reminders; optional NWS forecast for an owner-entered home location.
+  - Cost: negligible.
+- [ ] calendar-weather-prestart-proposal — Propose a remote start before the first calendar event, earlier in freezing weather; never starts on its own.
+  - Value: timely one-confirmation start proposal on winter mornings.
+  - Implementation: new `cmd/planner` Lambda with no GM calls; encrypted ICS URL; NWS forecast; one-use proposal.
+  - Data: private ICS feed; api.weather.gov; presence.
+  - Cost: negligible.
+- [ ] vehicle-alias-and-routine-phrases — VehicleName slot synonyms and a routine phrase pack for read-only intents and lock.
+  - Value: natural phrasing; lock as part of a bedtime routine.
+  - Implementation: custom slot type; test that start/unlock/trunk always force the PIN dialog.
+  - Data: none new.
+  - Cost: none.
+- [ ] echo-auto-in-cabin-mode — Tagged Echo Auto device gets short answers and refuses remote start, cancel start, and alert/flash.
+  - Value: safe in-cabin voice use.
+  - Implementation: hashed deviceId tag with a one-use registration code; response-style and intent-guard table.
+  - Data: Alexa deviceId.
+  - Cost: none.
+- [ ] vehicle-domain-events — Typed, coordinate-free events to the default EventBridge bus through a transactional outbox.
+  - Value: other home-iot projects react without polling.
+  - Implementation: `internal/events` with PutEvents; outbox in the same TransactWriteItems.
+  - Data: local command, location, auth state.
+  - Cost: negligible.
+- [ ] signed-webhook-delivery — HMAC-signed POSTs of selected events to owner-registered HTTPS endpoints.
+  - Value: Home Assistant automations with one URL and secret.
+  - Implementation: EventBridge rule to a standard queue and `cmd/hooks`; endpoint keys encrypted with the credential key; private-IP rejection.
+  - Data: domain events.
+  - Cost: negligible.
+- [ ] home-assistant-state-endpoint — Read-only state endpoint for Home Assistant RESTful sensors with a scoped read-only token.
+  - Value: the Suburban on the house wall tablet.
+  - Implementation: Fiber route group with hashed bearer tokens, scope `read:state`, GetItem only.
+  - Data: local latest-state items.
+  - Cost: negligible.
+- [ ] iot-core-mqtt-state — Retained coordinate-free MQTT state and events on AWS IoT Core; no command topic.
+  - Value: Suburban as one more MQTT device.
+  - Implementation: iotdataplane Publish from the outbox path; `iot:Publish` limited to `suburban/*`.
+  - Data: local events and state.
+  - Cost: negligible.
+- [ ] read-only-refresh-hook — Signed inbound hook for home automation to request one fresh location or diagnostics read, rate-limited.
+  - Value: faster arrival scenes without raising the base polling rate.
+  - Implementation: scoped integration token plus HMAC; honors cooldown before enqueue.
+  - Data: location(), diagnostics().
+  - Cost: negligible.
+- [ ] connection-test-button — Read-only probe (refresh if due, account vehicles, plan) with per-step pass/fail and latency.
+  - Value: isolate GM auth, subscription, throttling, or vehicle faults in 20 seconds.
+  - Implementation: `probe` operation in the command group; honors cooldown; one probe per 5 minutes (guided-gm-reenrollment uses a probe checkpoint).
+  - Data: getAccountVehicles, getOnstarPlan, refresh.
+  - Cost: negligible.
+- [ ] credential-health-page — Status and deadlines for every credential and key, never values.
+  - Value: shows what will break next and when.
+  - Implementation: State metadata plus a CI-written `DeployFacts` item; ACM DescribeCertificate with 24-hour cache.
+  - Data: State metadata; GitHub secret names/updatedAt; certificate metadata.
+  - Cost: negligible.
+- [ ] build-info-page — `/about` with deployed SHA, run, module versions, pinned OnStarJS2 commit, APK and model versions.
+  - Value: shows which code runs on each surface.
+  - Implementation: `-ldflags -X` into `internal/buildinfo`; `runtime/debug.ReadBuildInfo`.
+  - Data: local build metadata.
+  - Cost: none.
+- [ ] monthly-cost-readout — Owner panel with month-to-date AWS cost for this stack compared with the measured estimate.
+  - Value: spots a runaway loop within days.
+  - Implementation: Cost Explorer GetCostAndUsage cached 24 hours; attended activation of the Project cost-allocation tag.
+  - Data: Cost Explorer.
+  - Cost: low (about $0.30 per month in API calls).
+- [ ] upstream-drift-and-upgrade-notes — CI compare of the pinned OnStarJS2 commit against upstream master mapped to Go methods, plus per-release UPGRADE notes.
+  - Value: re-check the right ported function before commands fail.
+  - Implementation: `cmd/verify upstream` with the GitHub compare API on push; any scheduled run needs Jeremy's explicit schedule approval.
+  - Data: GitHub compare API; parity manifest.
+  - Cost: none.
+- [ ] household-read-only-viewers — Spouse or teen sign in with their own LWA accounts in a read-only role.
+  - Value: family checks the car without the owner's phone.
+  - Implementation: role-bearing grants and owner invitation codes; needs Jeremy's scope decision against the single-owner assumption.
+  - Data: per-viewer LWA user_id.
+  - Cost: negligible.
+- [ ] guest-unlock-window-delegation — Time-boxed guest grant for one unlock with owner approval and relock reminder.
+  - Value: scoped, audited access instead of shared credentials.
+  - Implementation: guest grants with expiry; needs explicit owner decisions on multi-user and owner-not-present unlock.
+  - Data: unlockDoor(), unlockTrunk(), lockDoor(); audit records.
+  - Cost: negligible.
+
+Deferred design items from review round 2 (not features; awaiting an upstream change or another repository):
+
+- [ ] android-app-links — Restore the verified HTTPS app link (`/auth/mobile/complete`, `/.well-known/assetlinks.json`) for mobile login.
+  - Value: one-step login return instead of poll-back.
+  - Implementation: blocked until a Fyne release exposes link-opened events to Go (fyne-io/fyne#2790).
+  - Data: none.
+  - Cost: none.
+- [ ] in-app-installer — In-app APK download, SHA-256 check, and installer handoff.
+  - Value: install without the browser step.
+  - Implementation: blocked until Fyne or a Go-accessible dependency exposes a content-URI package-install API with no authored non-Go code.
+  - Data: none.
+  - Cost: none.
+- [ ] gha-deploy-trust-narrowing — Narrow the org `gha-deploy` role trust (or add a per-repo role) so sibling repositories cannot read this stack's Lambda environment.
+  - Value: shrinks the accepted-risk blast radius in the plan's threat model.
+  - Implementation: change in `JeremyProffittOrg/credential-rotation` `infra/github-oidc-deploy.yaml`, not this repository.
+  - Data: none.
+  - Cost: none.
+- [ ] alexa-spoken-address — Alexa speaks a street address for "where is it".
+  - Value: more natural voice answer.
+  - Implementation: needs reverse geocoding, which the plan forbids sending coordinates to; requires an explicit privacy decision.
+  - Data: location fixes.
+  - Cost: depends on the geocoder.
+
+## Rejected proposals
+
+- config-export-restore — Rejected: one owner and one stack; IaC and `operator-handoff` already rebuild or record nearly all of it; credentials must be re-enrolled anyway; restoring "live" capability results would import proof never earned on that deployment; an HKDF-derived bundle key breaks on credential-key rotation and adds a new owner write surface.

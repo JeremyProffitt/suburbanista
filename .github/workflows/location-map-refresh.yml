@@ -1,0 +1,140 @@
+name: Refresh private vehicle map
+on:
+  workflow_dispatch:
+    inputs:
+      action:
+        description: Store private geofences in SSM, render the stored location, or purge cached map images
+        type: choice
+        default: render-stored
+        options: [render-stored, purge-images, configure-geofences]
+permissions:
+  contents: read
+  id-token: write
+concurrency:
+  group: suburban-location-map-refresh
+  cancel-in-progress: false
+jobs:
+  refresh:
+    if: github.ref == 'refs/heads/main'
+    runs-on: [self-hosted, Linux, X64]
+    timeout-minutes: 5
+    steps:
+      - uses: aws-actions/configure-aws-credentials@7474bc4690e29a8392af63c5b98e7449536d5c3a
+        with:
+          retry-max-attempts: 1
+          role-to-assume: ${{ vars.AWS_DEPLOY_ROLE_ARN }}
+          role-session-name: gha-Suburban-Remote-map-${{ github.run_id }}
+          aws-region: us-east-1
+      - name: Render stored fix and verify private PNG
+        if: inputs.action == 'render-stored'
+        env:
+          AWS_PAGER: ''
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p artifacts
+          resolver=$(aws cloudformation describe-stacks --stack-name suburban-remote --query 'Stacks[0].Outputs[?OutputKey==`MapResolverFunctionArn`].OutputValue | [0]' --output text)
+          bucket=$(aws cloudformation describe-stacks --stack-name suburban-remote --query 'Stacks[0].Outputs[?OutputKey==`MapBucketName`].OutputValue | [0]' --output text)
+          map_url=$(aws cloudformation describe-stacks --stack-name suburban-remote --query 'Stacks[0].Outputs[?OutputKey==`MapURL`].OutputValue | [0]' --output text)
+          # Only stored-fix rendering; the cron remains the GPS polling path.
+          aws lambda invoke --function-name "$resolver" --cli-binary-format raw-in-base64-out --payload '{"kind":"location-map-render-stored"}' artifacts/map-status.json --query StatusCode --output text
+          if ! jq -e '.hasFix and .hasMap and .matchesLatest and .reason == "" and .polledAt > 0 and .mapAt > 0' artifacts/map-status.json >/dev/null; then
+            echo 'Private map unavailable; stored-fix render did not complete'
+            jq '{hasFix,hasMap,matchesLatest,polledAt,mapAt,reason}' artifacts/map-status.json
+            exit 1
+          fi
+          # OIDC authenticates this private storage proof. The raw map key is
+          # owner-held; its one-way digest cannot authenticate a request.
+          image_id=$(jq -er '.imageId | select(test("^[a-f0-9]{32}$"))' artifacts/map-status.json)
+          aws s3api get-object --bucket "$bucket" --key "map-cache/${image_id}.png" artifacts/current-map.png >/dev/null
+          test "$(od -An -tx1 -N8 artifacts/current-map.png | tr -d ' \n')" = 89504e470d0a1a0a
+          test "$(curl --silent --output /dev/null --write-out '%{http_code}' --max-time 10 "$map_url")" = 401
+          test "$(curl --silent --output /dev/null --write-out '%{http_code}' --max-time 10 "https://${bucket}.s3.us-east-1.amazonaws.com/map-cache/${image_id}.png")" = 403
+          echo 'Private vehicle map: PNG available; anonymous API and S3 denied'
+          echo "$map_url"
+      - name: Store private Home and Work geofences in SSM
+        if: inputs.action == 'configure-geofences'
+        env:
+          AWS_PAGER: ''
+          LOCATION_GEOFENCES_JSON: ${{ secrets.LOCATION_GEOFENCES_JSON }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          umask 077
+          mkdir -p artifacts
+          request=$(mktemp "$RUNNER_TEMP/geofence-request.XXXXXX")
+          readback=$(mktemp "$RUNNER_TEMP/geofence-readback.XXXXXX")
+          trap 'rm -f "$request" "$readback"' EXIT
+          export GEOFENCE_REQUEST_PATH="$request"
+          # The Lambdas load suburbanista-geo at cold start and apply the same
+          # rules; this check stops a malformed value before it is stored.
+          python3 - <<'PY'
+          import json, math, os, sys
+          try:
+              config = json.loads(os.environ['LOCATION_GEOFENCES_JSON'])
+              fences = config['fences']
+              assert set(config) == {'fences'} and len(fences) == 2
+              radii = {'Home': 30.48, 'Work': 60.96}
+              assert sorted(f['name'] for f in fences) == ['Home', 'Work']
+              for f in fences:
+                  assert {'name', 'radiusMeters'} <= set(f) <= {'name', 'latitude', 'longitude', 'radiusMeters'}
+                  assert f['radiusMeters'] == radii[f['name']]
+                  assert math.isfinite(f.get('latitude', 0)) and abs(f.get('latitude', 0)) <= 85
+                  assert math.isfinite(f.get('longitude', 0)) and abs(f.get('longitude', 0)) <= 180
+              with open(os.environ['GEOFENCE_REQUEST_PATH'], 'w') as target:
+                  json.dump({'Name': 'suburbanista-geo', 'Type': 'SecureString', 'Tier': 'Standard', 'Overwrite': True,
+                             'Description': 'Suburbanista Home and Work geofence centers (JSON)',
+                             'Value': json.dumps(config, separators=(',', ':'))}, target)
+          except Exception:
+              sys.exit('Private geofence configuration is missing or invalid')
+          PY
+          aws ssm put-parameter --cli-input-json "file://$request" --query Version --output text > /dev/null
+          aws ssm get-parameter --name suburbanista-geo --with-decryption --output json > "$readback"
+          export GEOFENCE_READBACK_PATH="$readback"
+          python3 - <<'PY'
+          import json, os, sys
+          stored = json.load(open(os.environ['GEOFENCE_READBACK_PATH']))['Parameter']
+          if stored['Type'] != 'SecureString' or json.loads(stored['Value']) != json.loads(os.environ['LOCATION_GEOFENCES_JSON']):
+              sys.exit('Stored geofence parameter does not match the configured value')
+          json.dump({'parameter': 'suburbanista-geo', 'type': 'SecureString', 'version': stored['Version'], 'verified': True}, open('artifacts/geofence-configuration.json', 'w'))
+          PY
+          echo 'Home and Work geofences stored in SSM and verified; Lambdas load them at their next cold start'
+      - name: Purge the existing private map image snapshot
+        if: inputs.action == 'purge-images'
+        env:
+          AWS_PAGER: ''
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p artifacts
+          bucket=$(aws cloudformation describe-stacks --stack-name suburban-remote --query 'Stacks[0].Outputs[?OutputKey==`MapBucketName`].OutputValue | [0]' --output text)
+          test -n "$bucket" && test "$bucket" != None
+          # Snapshot at most 10,000 objects before deleting. Fresh on-demand
+          # images created after this snapshot are not part of this purge.
+          aws s3api list-objects-v2 --bucket "$bucket" --prefix map-cache/ --max-items 10000 > artifacts/map-purge-before.json
+          jq -e '(.NextToken == null) and all(.Contents[]?; .Key | test("^map-cache/[a-f0-9]{32}\\.png$"))' artifacts/map-purge-before.json >/dev/null
+          jq '[.Contents[]? | {Key:.Key}]' artifacts/map-purge-before.json > artifacts/map-purge-keys.json
+          count=$(jq 'length' artifacts/map-purge-keys.json)
+          for ((offset=0; offset<count; offset+=1000)); do
+            jq --argjson start "$offset" '{Objects: .[$start:$start+1000], Quiet:true}' artifacts/map-purge-keys.json > artifacts/map-purge-batch.json
+            aws s3api delete-objects --bucket "$bucket" --delete file://artifacts/map-purge-batch.json > artifacts/map-purge-result.json
+            # AWS CLI may emit no JSON for a successful Quiet delete. The
+            # command must succeed, any reported errors fail, and the exact
+            # deleted snapshot is independently checked below.
+            jq -s -e 'length <= 1 and all(.[]; (.Errors // []) | length == 0)' artifacts/map-purge-result.json >/dev/null
+          done
+          aws s3api list-objects-v2 --bucket "$bucket" --prefix map-cache/ --max-items 10000 > artifacts/map-purge-after.json
+          jq -e '.NextToken == null' artifacts/map-purge-after.json >/dev/null
+          jq -e --slurpfile before artifacts/map-purge-keys.json '[.Contents[]?.Key] as $after | all($before[0][]; .Key as $key | ($after | index($key)) == null)' artifacts/map-purge-after.json >/dev/null
+          jq -n --argjson removed "$count" '{purgedImages:$removed, snapshotAbsent:true, observationsPreserved:true, generatedImages:0}' > artifacts/map-purge-report.json
+          echo "Map image snapshot removed; observations retained; no map generated"
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: private-vehicle-map
+          path: |
+            artifacts/current-map.png
+            artifacts/map-status.json
+            artifacts/map-purge-report.json
+            artifacts/geofence-configuration.json
+          retention-days: 7
+          if-no-files-found: error

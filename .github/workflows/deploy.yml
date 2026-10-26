@@ -1,0 +1,301 @@
+name: Deploy production
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      repair:
+        type: choice
+        options: [describe, continue-rollback, delete-empty-failed-create]
+        default: describe
+permissions:
+  contents: read
+concurrency:
+  group: suburban-remote-production
+  cancel-in-progress: false
+env:
+  AWS_REGION: us-east-1
+  AWS_PAGER: ''
+  GOTOOLCHAIN: local
+  GOWORK: 'off'
+jobs:
+  build:
+    if: github.event_name == 'push'
+    runs-on: [self-hosted, Linux, X64]
+    timeout-minutes: 20
+    permissions:
+      contents: read
+    services:
+      dynamodb:
+        # DynamoDB Local 3.3.2, immutable multi-architecture digest.
+        image: amazon/dynamodb-local@sha256:6ada631ec7aa5fc83446855eb17233e3dad184fec47477e8140c6c569cfe0c86
+        ports: ['8000:8000']
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff
+        with:
+          go-version-file: go.mod
+          cache: false
+      - uses: aws-actions/setup-sam@f84ec7d548307efafe33230528756de3c5841a17
+        with:
+          version: '1.150.1'
+      - name: Test and build
+        shell: bash
+        run: |
+          set -euo pipefail
+          go run ./cmd/verify redaction --paths internal cmd artifacts pkg permissions
+          CGO_ENABLED=0 GOOS=linux GOARCH=arm64 go vet ./...
+          mkdir -p artifacts
+          set +e
+          go test -json -race -shuffle=on -count=1 -timeout=10m ./... > artifacts/test-results.json 2>&1
+          test_status=$?
+          set -e
+          go run ./cmd/verify redaction --paths internal cmd artifacts pkg permissions
+          if [ "$test_status" -ne 0 ]; then cat artifacts/test-results.json; exit "$test_status"; fi
+          set +e
+          DYNAMODB_LOCAL_ENDPOINT=http://localhost:8000 go test -json -tags integration ./internal/state ./internal/auth ./internal/commands -run 'TestCredentialConformanceDynamoDB|TestMobileDynamoDB|TestCommandDynamoDB' -count=1 -timeout=90s > artifacts/state-integration.json 2>&1
+          integration_status=$?
+          set -e
+          go run ./cmd/verify redaction --paths artifacts/state-integration.json
+          if [ "$integration_status" -ne 0 ]; then cat artifacts/state-integration.json; exit "$integration_status"; fi
+          go run ./cmd/verify template --schema-baseline infra/deployed-schema.yaml
+          sam validate --lint
+          export BUILD_COMMIT="$GITHUB_SHA" BUILD_TIME="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+          sam build
+          mkdir -p dist
+          CGO_ENABLED=0 go build -trimpath -o dist/paramwriter ./cmd/paramwriter
+          CGO_ENABLED=0 go build -trimpath -o dist/verify ./cmd/verify
+          CGO_ENABLED=0 go build -trimpath -o dist/seed ./cmd/seed
+          cp samconfig.toml dist/
+          cp -R infra dist/
+          cp -R .aws-sam dist/
+          tar -C dist -czf deployment.tar.gz .
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: deployment
+          path: deployment.tar.gz
+          retention-days: 7
+          if-no-files-found: error
+  deploy:
+    needs: build
+    runs-on: [self-hosted, Linux, X64]
+    timeout-minutes: 25
+    permissions:
+      contents: read
+      id-token: write
+    env:
+      DOMAIN_NAME: ${{ vars.DOMAIN_NAME }}
+      CERTIFICATE_ARN: ${{ vars.CERTIFICATE_ARN }}
+      HOSTED_ZONE_ID: ${{ vars.HOSTED_ZONE_ID }}
+      CLOUDFORMATION_S3_BUCKET: ${{ vars.CLOUDFORMATION_S3_BUCKET }}
+      DEPLOY_AWS_ACCOUNT: ${{ vars.DEPLOY_AWS_ACCOUNT }}
+    steps:
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
+        with:
+          name: deployment
+      - run: tar -xzf deployment.tar.gz
+      - uses: aws-actions/setup-sam@f84ec7d548307efafe33230528756de3c5841a17
+        with:
+          version: '1.150.1'
+      - name: Pin AWS CLI
+        run: |
+          set -euo pipefail
+          cli_work=$(mktemp -d "${RUNNER_TEMP:?}/suburban-awscli.XXXXXX")
+          trap 'rm -rf -- "$cli_work"' EXIT
+          curl --fail --silent --show-error https://awscli.amazonaws.com/awscli-exe-linux-x86_64-2.31.18.zip -o "$cli_work/awscli.zip"
+          unzip -q "$cli_work/awscli.zip" -d "$cli_work/cli"
+          sudo "$cli_work/cli/aws/install" --update
+          aws --version
+      - uses: aws-actions/configure-aws-credentials@7474bc4690e29a8392af63c5b98e7449536d5c3a
+        with:
+          retry-max-attempts: 1
+          role-to-assume: ${{ vars.AWS_DEPLOY_ROLE_ARN }}
+          role-session-name: gha-Suburban-Remote-${{ github.run_id }}
+          aws-region: us-east-1
+      - name: Prechecks
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(aws sts get-caller-identity --query Account --output text)" = "$DEPLOY_AWS_ACCOUNT"
+          bucket_region=$(aws s3api get-bucket-location --bucket "$CLOUDFORMATION_S3_BUCKET" --query LocationConstraint --output text)
+          test "$bucket_region" = None || test "$bucket_region" = us-east-1
+          if status=$(aws cloudformation describe-stacks --stack-name suburban-remote --query 'Stacks[0].StackStatus' --output text 2>/tmp/stack-error); then
+            case "$status" in
+              CREATE_COMPLETE|UPDATE_COMPLETE|UPDATE_ROLLBACK_COMPLETE) ;;
+              *) echo "Stack requires explicit repair: $status"; exit 1 ;;
+            esac
+          else
+            grep -q 'Stack with id suburban-remote does not exist' /tmp/stack-error || { cat /tmp/stack-error; exit 1; }
+          fi
+          domain="${DOMAIN_NAME,,}"
+          test "$domain" = suburban.jeremy.ninja
+          cert=$(aws acm describe-certificate --certificate-arn "$CERTIFICATE_ARN" --query Certificate --output json)
+          jq -e --arg d "$domain" '.Status == "ISSUED" and any(.SubjectAlternativeNames[]; . == $d or . == "*.jeremy.ninja")' <<< "$cert"
+          records=$(aws route53 list-resource-record-sets --hosted-zone-id "$HOSTED_ZONE_ID" --query "ResourceRecordSets[?Name=='${domain}.']" --output json)
+          if test "$(jq length <<< "$records")" != 0; then
+            target=$(aws apigatewayv2 get-domain-name --domain-name "$domain" --query 'DomainNameConfigurations[0].ApiGatewayDomainName' --output text)
+            jq -e --arg target "$target" 'all(.[]; (.Type == "A" or .Type == "AAAA") and (.AliasTarget.DNSName | rtrimstr(".")) == $target)' <<< "$records"
+            api=$(aws cloudformation describe-stacks --stack-name suburban-remote --query 'Stacks[0].Outputs[?OutputKey==`ApiId`].OutputValue | [0]' --output text)
+            aws apigatewayv2 get-api-mappings --domain-name "$domain" --query Items --output json | jq -e --arg api "$api" 'length > 0 and all(.[]; .ApiId == $api)'
+          fi
+          aws lambda get-account-settings --query AccountLimit --output json | jq -e '.ConcurrentExecutions >= 107 and .UnreservedConcurrentExecutions >= 107'
+          echo "domain=$domain; certificate-region=us-east-1; State keys=pk:S,sk:S"
+      - name: Package and deploy
+        env:
+          ALEXA_SKILL_ID: ${{ vars.ALEXA_SKILL_ID }}
+          LWA_CLIENT_ID: ${{ vars.LWA_CLIENT_ID }}
+          LWA_CLIENT_SECRET: ${{ secrets.LWA_CLIENT_SECRET }}
+          MAP_READ_KEY_SHA256: ${{ secrets.MAP_READ_KEY_SHA256 }}
+          CREDENTIAL_ENCRYPTION_KEY_A: ${{ secrets.CREDENTIAL_ENCRYPTION_KEY_A }}
+          CREDENTIAL_ENCRYPTION_KEY_B: ${{ secrets.CREDENTIAL_ENCRYPTION_KEY_B }}
+          CREDENTIAL_ENCRYPTION_KEY_ACTIVE: ${{ vars.CREDENTIAL_ENCRYPTION_KEY_ACTIVE }}
+          ONSTAR_DEVICE_ID: ${{ secrets.ONSTAR_DEVICE_ID }}
+          OWNER_AMAZON_USER_ID: ${{ vars.OWNER_AMAZON_USER_ID }}
+          ENROLLMENT_VERSION: ${{ vars.ENROLLMENT_VERSION }}
+        run: |
+          set -euo pipefail
+          sam package --template-file .aws-sam/build/template.yaml --s3-bucket "$CLOUDFORMATION_S3_BUCKET" --s3-prefix suburban-remote --output-template-file packaged.yaml
+          ./verify template --input packaged.yaml --schema-baseline infra/deployed-schema.yaml
+          ./paramwriter --canary
+      - name: Resolve credential table
+        run: |
+          set -euo pipefail
+          table=$(aws cloudformation describe-stacks --stack-name suburban-remote --query 'Stacks[0].Outputs[?OutputKey==`StateTableName`].OutputValue | [0]' --output text)
+          test -n "$table" && test "$table" != None
+          echo "STATE_TABLE=$table" >> "$GITHUB_ENV"
+      - name: Import one-use encrypted enrollment
+        env:
+          ONSTAR_TOKEN_BOOTSTRAP: ${{ secrets.ONSTAR_TOKEN_BOOTSTRAP }}
+          CREDENTIAL_ENCRYPTION_KEY_A: ${{ secrets.CREDENTIAL_ENCRYPTION_KEY_A }}
+          CREDENTIAL_ENCRYPTION_KEY_B: ${{ secrets.CREDENTIAL_ENCRYPTION_KEY_B }}
+          CREDENTIAL_ENCRYPTION_KEY_ACTIVE: ${{ vars.CREDENTIAL_ENCRYPTION_KEY_ACTIVE }}
+          ONSTAR_DEVICE_ID: ${{ secrets.ONSTAR_DEVICE_ID }}
+          OWNER_AMAZON_USER_ID: ${{ vars.OWNER_AMAZON_USER_ID }}
+          ENROLLMENT_VERSION: ${{ vars.ENROLLMENT_VERSION }}
+        run: ./seed
+      - name: Check fingerprint artifact privacy
+        id: fingerprint-privacy
+        if: always()
+        run: ./verify redaction --paths canary-fingerprints.json
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always() && steps.fingerprint-privacy.outcome == 'success'
+        with:
+          name: canary-fingerprints
+          path: canary-fingerprints.json
+          retention-days: 7
+          if-no-files-found: error
+      - name: Verify health commit
+        run: |
+          set -euo pipefail
+          for attempt in 1 2 3 4 5 6; do
+            if body=$(curl --fail --silent --show-error --connect-timeout 10 --max-time 20 https://suburban.jeremy.ninja/healthz) && test "$(jq -r .version <<< "$body")" = "$GITHUB_SHA"; then
+              echo "Health version verified: $GITHUB_SHA"
+              exit 0
+            fi
+            sleep 10
+          done
+          echo 'Health verification failed'
+          exit 1
+      - name: Verify live MCP OAuth endpoint
+        shell: bash
+        run: |
+          set -euo pipefail
+          proof_dir=$(mktemp -d "${RUNNER_TEMP:?}/suburban-mcp-proof.XXXXXX")
+          trap 'rm -rf -- "$proof_dir"' EXIT
+          origin=https://suburban.jeremy.ninja
+          for path in /.well-known/oauth-protected-resource /.well-known/oauth-protected-resource/mcp; do
+            curl --fail --silent --show-error --connect-timeout 10 --max-time 20 "$origin$path" > "$proof_dir/resource.json"
+            jq -e --arg origin "$origin" '.resource == ($origin + "/mcp") and .authorization_servers == [$origin] and .scopes_supported == ["vehicle"] and .bearer_methods_supported == ["header"]' "$proof_dir/resource.json" > /dev/null
+          done
+          curl --fail --silent --show-error --connect-timeout 10 --max-time 20 "$origin/.well-known/oauth-authorization-server" > "$proof_dir/issuer.json"
+          jq -e --arg origin "$origin" '.issuer == $origin and .authorization_endpoint == ($origin + "/oauth/authorize") and .token_endpoint == ($origin + "/oauth/token") and .registration_endpoint == ($origin + "/oauth/register") and .code_challenge_methods_supported == ["S256"] and .token_endpoint_auth_methods_supported == ["none"]' "$proof_dir/issuer.json" > /dev/null
+          status=$(curl --silent --show-error --connect-timeout 10 --max-time 20 -D "$proof_dir/headers" -o "$proof_dir/rejection.json" -w '%{http_code}' -H 'Content-Type: application/json' -H 'Accept: application/json, text/event-stream' --data '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-11-25","capabilities":{},"clientInfo":{"name":"deployment-proof","version":"1"}}}' "$origin/mcp")
+          test "$status" = 401
+          grep -qi '^www-authenticate:.*resource_metadata=' "$proof_dir/headers"
+          grep -qi '^cache-control:.*no-store' "$proof_dir/headers"
+          jq -e '.error == "invalid_token"' "$proof_dir/rejection.json" > /dev/null
+          status=$(curl --silent --show-error --connect-timeout 10 --max-time 20 -o "$proof_dir/token-error.json" -w '%{http_code}' --data 'grant_type=authorization_code&code=invalid' "$origin/oauth/token")
+          test "$status" = 400
+          jq -e '.error == "invalid_grant"' "$proof_dir/token-error.json" > /dev/null
+          status=$(curl --silent --show-error --connect-timeout 10 --max-time 20 -o /dev/null -w '%{http_code}' -H 'Origin: https://example.invalid' "$origin/mcp")
+          test "$status" = 403
+          echo 'MCP_PUBLIC_OAUTH_DISCOVERY=PASS'
+          echo 'MCP_UNAUTHENTICATED_INITIALIZE=401'
+          echo 'MCP_INVALID_CODE_EXCHANGE=400'
+          echo 'MCP_FOREIGN_ORIGIN=403'
+          echo 'MCP_OWNER_CONSENT=NOT_TESTED; VEHICLE_ACTIONS=NONE'
+  canary-evidence:
+    needs: [build, deploy]
+    runs-on: [self-hosted, Linux, X64]
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      actions: read
+    steps:
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
+        with:
+          name: deployment
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
+        with:
+          name: canary-fingerprints
+      - run: tar -xzf deployment.tar.gz
+      - name: Check completed logs and artifacts without retaining the canary
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          job=$(gh api "repos/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID/jobs" --jq '.jobs[] | select(.name == "deploy") | .id')
+          test -n "$job"
+          gh_api_options=()
+          gh api --help > "$RUNNER_TEMP/suburban-gh-api-help.txt"
+          if grep -q -- '--allow-escape-sequences' "$RUNNER_TEMP/suburban-gh-api-help.txt"; then
+            gh_api_options+=(--allow-escape-sequences)
+          fi
+          gh api "${gh_api_options[@]}" "repos/$GITHUB_REPOSITORY/actions/jobs/$job/logs" > deployment.log
+          ./verify deployment --mode canary --report artifacts/deployment-canary.json
+          ./verify redaction --paths artifacts/deployment-canary.json
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: success()
+        with:
+          name: deployment-canary-report
+          path: artifacts/deployment-canary.json
+          retention-days: 7
+          if-no-files-found: error
+  stack-repair:
+    if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main'
+    runs-on: [self-hosted, Linux, X64]
+    timeout-minutes: 20
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: aws-actions/configure-aws-credentials@7474bc4690e29a8392af63c5b98e7449536d5c3a
+        with:
+          retry-max-attempts: 1
+          role-to-assume: ${{ vars.AWS_DEPLOY_ROLE_ARN }}
+          role-session-name: gha-Suburban-Remote-repair-${{ github.run_id }}
+          aws-region: us-east-1
+      - name: Repair only the selected failed state
+        env:
+          REPAIR: ${{ inputs.repair }}
+          DEPLOY_AWS_ACCOUNT: ${{ vars.DEPLOY_AWS_ACCOUNT }}
+        run: |
+          set -euo pipefail
+          test "$(aws sts get-caller-identity --query Account --output text)" = "$DEPLOY_AWS_ACCOUNT"
+          status=$(aws cloudformation describe-stacks --stack-name suburban-remote --query 'Stacks[0].StackStatus' --output text)
+          echo "$status"
+          case "$REPAIR" in
+            describe) exit 0 ;;
+            continue-rollback)
+              test "$status" = UPDATE_ROLLBACK_FAILED
+              aws cloudformation continue-update-rollback --stack-name suburban-remote
+              aws cloudformation wait stack-rollback-complete --stack-name suburban-remote ;;
+            delete-empty-failed-create)
+              test "$status" = ROLLBACK_COMPLETE
+              aws cloudformation list-stack-resources --stack-name suburban-remote --query StackResourceSummaries --output json | jq -e 'all(.[]; .ResourceStatus == "DELETE_COMPLETE" or .ResourceStatus == "CREATE_FAILED" or (.LogicalResourceId == "StateTable" and .ResourceStatus == "DELETE_SKIPPED"))'
+              aws cloudformation delete-stack --stack-name suburban-remote
+              aws cloudformation wait stack-delete-complete --stack-name suburban-remote ;;
+            *) exit 1 ;;
+          esac

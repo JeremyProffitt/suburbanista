@@ -1,0 +1,548 @@
+{
+  "interactionModel": {
+    "languageModel": {
+      "types": [
+        {
+          "values": [
+            {
+              "id": "start",
+              "name": {
+                "synonyms": [
+                  "start"
+                ],
+                "value": "remote start"
+              }
+            },
+            {
+              "id": "cancel-start",
+              "name": {
+                "synonyms": [
+                  "cancel-start"
+                ],
+                "value": "engine stop"
+              }
+            },
+            {
+              "id": "lock",
+              "name": {
+                "synonyms": [
+                  "lock"
+                ],
+                "value": "door lock"
+              }
+            },
+            {
+              "id": "unlock",
+              "name": {
+                "synonyms": [
+                  "unlock"
+                ],
+                "value": "door unlock"
+              }
+            },
+            {
+              "id": "lock-trunk",
+              "name": {
+                "synonyms": [
+                  "lock-trunk"
+                ],
+                "value": "cargo lock"
+              }
+            },
+            {
+              "id": "unlock-trunk",
+              "name": {
+                "synonyms": [
+                  "unlock-trunk"
+                ],
+                "value": "cargo unlock"
+              }
+            },
+            {
+              "id": "horn-and-lights",
+              "name": {
+                "synonyms": [
+                  "horn-and-lights"
+                ],
+                "value": "horn and lights"
+              }
+            },
+            {
+              "id": "cancel-alert",
+              "name": {
+                "synonyms": [
+                  "cancel-alert"
+                ],
+                "value": "stop alerts"
+              }
+            },
+            {
+              "id": "flash-lights",
+              "name": {
+                "synonyms": [
+                  "flash-lights"
+                ],
+                "value": "flash lights"
+              }
+            },
+            {
+              "id": "stop-lights",
+              "name": {
+                "synonyms": [
+                  "stop-lights"
+                ],
+                "value": "stop lights"
+              }
+            },
+            {
+              "id": "diagnostics",
+              "name": {
+                "synonyms": [
+                  "diagnostics"
+                ],
+                "value": "vehicle health"
+              }
+            },
+            {
+              "id": "garage",
+              "name": {
+                "synonyms": [
+                  "garage"
+                ],
+                "value": "garage"
+              }
+            },
+            {
+              "id": "vehicle-details",
+              "name": {
+                "synonyms": [
+                  "vehicle-details"
+                ],
+                "value": "vehicle details"
+              }
+            },
+            {
+              "id": "onstar-plan",
+              "name": {
+                "synonyms": [
+                  "onstar-plan"
+                ],
+                "value": "on star plan"
+              }
+            },
+            {
+              "id": "recalls",
+              "name": {
+                "synonyms": [
+                  "recalls"
+                ],
+                "value": "recalls"
+              }
+            },
+            {
+              "id": "warranty",
+              "name": {
+                "synonyms": [
+                  "warranty"
+                ],
+                "value": "warranty"
+              }
+            },
+            {
+              "id": "sxm-subscription",
+              "name": {
+                "synonyms": [
+                  "sxm-subscription"
+                ],
+                "value": "radio subscription"
+              }
+            },
+            {
+              "id": "location",
+              "name": {
+                "synonyms": [
+                  "location"
+                ],
+                "value": "location"
+              }
+            },
+            {
+              "id": "ev-set-charge-target",
+              "name": {
+                "synonyms": [
+                  "ev-set-charge-target"
+                ],
+                "value": "charge target"
+              }
+            },
+            {
+              "id": "ev-stop-charging",
+              "name": {
+                "synonyms": [
+                  "ev-stop-charging"
+                ],
+                "value": "stop charging"
+              }
+            },
+            {
+              "id": "ev-charging-metrics",
+              "name": {
+                "synonyms": [
+                  "ev-charging-metrics"
+                ],
+                "value": "charging metrics"
+              }
+            },
+            {
+              "id": "ev-refresh-charging-metrics",
+              "name": {
+                "synonyms": [
+                  "ev-refresh-charging-metrics"
+                ],
+                "value": "refresh charging metrics"
+              }
+            }
+          ],
+          "name": "SUBURBAN_FEATURE"
+        },
+        {
+          "values": [
+            {
+              "id": "Honk",
+              "name": {
+                "synonyms": [
+                  "honk"
+                ],
+                "value": "horn"
+              }
+            },
+            {
+              "id": "Flash",
+              "name": {
+                "synonyms": [
+                  "flash"
+                ],
+                "value": "lights"
+              }
+            },
+            {
+              "id": "Both",
+              "name": {
+                "synonyms": [
+                  "both"
+                ],
+                "value": "horn and lights"
+              }
+            }
+          ],
+          "name": "SUBURBAN_ALERT_ACTION"
+        }
+      ],
+      "invocationName": "suburban",
+      "intents": [
+        {
+          "name": "StartIntent",
+          "slots": [
+            {
+              "type": "AMAZON.NUMBER",
+              "name": "Temperature"
+            }
+          ],
+          "samples": [
+            "start",
+            "start the truck",
+            "start my suburban",
+            "remote start",
+            "start at {Temperature} degrees celsius"
+          ]
+        },
+        {
+          "samples": [
+            "cancel remote start",
+            "stop the engine",
+            "cancel the engine start"
+          ],
+          "name": "CancelEngineIntent"
+        },
+        {
+          "name": "LockIntent",
+          "slots": [
+            {
+              "type": "AMAZON.NUMBER",
+              "name": "Delay"
+            }
+          ],
+          "samples": [
+            "lock",
+            "lock the truck",
+            "lock the doors",
+            "lock with delay {Delay}"
+          ]
+        },
+        {
+          "name": "UnlockIntent",
+          "slots": [
+            {
+              "type": "AMAZON.NUMBER",
+              "name": "Delay"
+            }
+          ],
+          "samples": [
+            "unlock",
+            "unlock the truck",
+            "unlock the doors",
+            "unlock with delay {Delay}"
+          ]
+        },
+        {
+          "name": "LockTrunkIntent",
+          "slots": [
+            {
+              "type": "AMAZON.NUMBER",
+              "name": "Delay"
+            }
+          ],
+          "samples": [
+            "lock the cargo area",
+            "lock the trunk",
+            "lock the cargo area with delay {Delay}"
+          ]
+        },
+        {
+          "name": "UnlockTrunkIntent",
+          "slots": [
+            {
+              "type": "AMAZON.NUMBER",
+              "name": "Delay"
+            }
+          ],
+          "samples": [
+            "unlock the cargo area",
+            "unlock the trunk",
+            "unlock the cargo area with delay {Delay}"
+          ]
+        },
+        {
+          "name": "SoundAlertIntent",
+          "slots": [
+            {
+              "type": "SUBURBAN_ALERT_ACTION",
+              "name": "AlertAction"
+            },
+            {
+              "type": "AMAZON.NUMBER",
+              "name": "Delay"
+            },
+            {
+              "type": "AMAZON.NUMBER",
+              "name": "Duration"
+            }
+          ],
+          "samples": [
+            "sound the alert",
+            "sound {AlertAction}",
+            "sound {AlertAction} with duration {Duration}",
+            "sound {AlertAction} with delay {Delay} with duration {Duration}"
+          ]
+        },
+        {
+          "samples": [
+            "stop the alerts",
+            "cancel the horn and lights",
+            "stop the horn"
+          ],
+          "name": "StopAlertsIntent"
+        },
+        {
+          "name": "FlashLightsIntent",
+          "slots": [
+            {
+              "type": "AMAZON.NUMBER",
+              "name": "Delay"
+            },
+            {
+              "type": "AMAZON.NUMBER",
+              "name": "Duration"
+            }
+          ],
+          "samples": [
+            "flash the lights",
+            "flash lights with duration {Duration}",
+            "flash lights with delay {Delay} with duration {Duration}"
+          ]
+        },
+        {
+          "samples": [
+            "stop flashing the lights",
+            "cancel the flashing lights"
+          ],
+          "name": "StopLightsIntent"
+        },
+        {
+          "samples": [
+            "check vehicle health",
+            "read diagnostics",
+            "get vehicle diagnostics"
+          ],
+          "name": "DiagnosticsIntent"
+        },
+        {
+          "samples": [
+            "show my garage",
+            "read garage information"
+          ],
+          "name": "GarageIntent"
+        },
+        {
+          "samples": [
+            "get vehicle details",
+            "check vehicle capabilities"
+          ],
+          "name": "VehicleDetailsIntent"
+        },
+        {
+          "samples": [
+            "check my on star plan",
+            "read service plan information"
+          ],
+          "name": "OnStarPlanIntent"
+        },
+        {
+          "samples": [
+            "check recalls",
+            "read vehicle recalls"
+          ],
+          "name": "RecallsIntent"
+        },
+        {
+          "samples": [
+            "check warranty",
+            "read warranty information"
+          ],
+          "name": "WarrantyIntent"
+        },
+        {
+          "samples": [
+            "check radio subscription",
+            "read satellite radio subscription"
+          ],
+          "name": "RadioSubscriptionIntent"
+        },
+        {
+          "samples": [
+            "where is my truck",
+            "where is it",
+            "check location",
+            "when was the truck last seen"
+          ],
+          "name": "LocationIntent"
+        },
+        {
+          "name": "SetChargeTargetIntent",
+          "slots": [
+            {
+              "type": "AMAZON.NUMBER",
+              "name": "Target"
+            }
+          ],
+          "samples": [
+            "set charge target to {Target} percent",
+            "set battery target to {Target} percent"
+          ]
+        },
+        {
+          "samples": [
+            "stop battery charging",
+            "stop electric vehicle charging"
+          ],
+          "name": "StopChargingIntent"
+        },
+        {
+          "samples": [
+            "check charging metrics",
+            "read electric vehicle charge level"
+          ],
+          "name": "ChargingMetricsIntent"
+        },
+        {
+          "samples": [
+            "refresh charging metrics",
+            "refresh electric vehicle charge level"
+          ],
+          "name": "RefreshChargingMetricsIntent"
+        },
+        {
+          "samples": [
+            "status",
+            "vehicle status",
+            "check status",
+            "what is the status",
+            "how much gas do I have",
+            "fuel level",
+            "miles to empty",
+            "total mileage"
+          ],
+          "name": "VehicleStatusIntent"
+        },
+        {
+          "samples": [
+            "command status",
+            "check the last command",
+            "did it finish"
+          ],
+          "name": "CommandStatusIntent"
+        },
+        {
+          "samples": [
+            "feature catalog",
+            "list all features",
+            "what vehicle features are available"
+          ],
+          "name": "FeatureCatalogIntent"
+        },
+        {
+          "samples": [
+            "connection status",
+            "is my vehicle connected",
+            "check the connection"
+          ],
+          "name": "ConnectionStatusIntent"
+        },
+        {
+          "name": "PreviewFeatureIntent",
+          "slots": [
+            {
+              "type": "SUBURBAN_FEATURE",
+              "name": "Feature"
+            }
+          ],
+          "samples": [
+            "preview {Feature}",
+            "demo {Feature}",
+            "show a demo of {Feature}"
+          ]
+        },
+        {
+          "samples": [],
+          "name": "AMAZON.HelpIntent"
+        },
+        {
+          "samples": [],
+          "name": "AMAZON.StopIntent"
+        },
+        {
+          "samples": [],
+          "name": "AMAZON.CancelIntent"
+        },
+        {
+          "samples": [],
+          "name": "AMAZON.NavigateHomeIntent"
+        },
+        {
+          "samples": [],
+          "name": "AMAZON.FallbackIntent"
+        }
+      ]
+    }
+  }
+}

@@ -1,0 +1,215 @@
+{
+  "prerequisites": [
+    {
+      "name": "repository",
+      "status": "blocked",
+      "source": "Synthetic test observation",
+      "observed": "Synthetic missing input; fixture only",
+      "date": "2026-10-22",
+      "attended": true,
+      "owner": "Jeremy",
+      "dependentMilestone": "fixture-dependent"
+    },
+    {
+      "name": "github-secret-access",
+      "status": "blocked",
+      "source": "Synthetic test observation",
+      "observed": "Synthetic missing input; fixture only",
+      "date": "2026-10-22",
+      "attended": true,
+      "owner": "Jeremy",
+      "dependentMilestone": "fixture-dependent"
+    },
+    {
+      "name": "aws-account-role",
+      "status": "blocked",
+      "source": "Synthetic test observation",
+      "observed": "Synthetic missing input; fixture only",
+      "date": "2026-10-22",
+      "attended": true,
+      "owner": "Jeremy",
+      "dependentMilestone": "fixture-dependent"
+    },
+    {
+      "name": "certificate-domain-region",
+      "status": "blocked",
+      "source": "Synthetic test observation",
+      "observed": "Synthetic missing input; fixture only",
+      "date": "2026-10-22",
+      "attended": true,
+      "owner": "Jeremy",
+      "dependentMilestone": "fixture-dependent"
+    },
+    {
+      "name": "amazon-developer-access",
+      "status": "blocked",
+      "source": "Synthetic test observation",
+      "observed": "Synthetic missing input; fixture only",
+      "date": "2026-10-22",
+      "attended": true,
+      "owner": "Jeremy",
+      "dependentMilestone": "fixture-dependent"
+    },
+    {
+      "name": "gm-entitlement",
+      "status": "blocked",
+      "source": "Synthetic test observation",
+      "observed": "Synthetic missing input; fixture only",
+      "date": "2026-10-22",
+      "attended": true,
+      "owner": "Jeremy",
+      "dependentMilestone": "fixture-dependent"
+    },
+    {
+      "name": "vehicle-owner-garage",
+      "status": "blocked",
+      "source": "Synthetic test observation",
+      "observed": "Synthetic missing input; fixture only",
+      "date": "2026-10-22",
+      "attended": true,
+      "owner": "Jeremy",
+      "dependentMilestone": "fixture-dependent"
+    },
+    {
+      "name": "target-handset",
+      "status": "blocked",
+      "source": "Synthetic test observation",
+      "observed": "Synthetic missing input; fixture only",
+      "date": "2026-10-22",
+      "attended": true,
+      "owner": "Jeremy",
+      "dependentMilestone": "fixture-dependent"
+    },
+    {
+      "name": "signing-key-recovery",
+      "status": "blocked",
+      "source": "Synthetic test observation",
+      "observed": "Synthetic missing input; fixture only",
+      "date": "2026-10-22",
+      "attended": true,
+      "owner": "Jeremy",
+      "dependentMilestone": "fixture-dependent"
+    },
+    {
+      "name": "alexa-device-account",
+      "status": "blocked",
+      "source": "Synthetic test observation",
+      "observed": "Synthetic missing input; fixture only",
+      "date": "2026-10-22",
+      "attended": true,
+      "owner": "Jeremy",
+      "dependentMilestone": "fixture-dependent"
+    },
+    {
+      "name": "ses-identity",
+      "status": "blocked",
+      "source": "Synthetic test observation",
+      "observed": "Synthetic missing input; fixture only",
+      "date": "2026-10-22",
+      "attended": true,
+      "owner": "Jeremy",
+      "dependentMilestone": "fixture-dependent"
+    },
+    {
+      "name": "go-toolchain",
+      "status": "blocked",
+      "source": "Synthetic test observation",
+      "observed": "Synthetic missing input; fixture only",
+      "date": "2026-10-22",
+      "attended": true,
+      "owner": "Jeremy",
+      "dependentMilestone": "fixture-dependent"
+    },
+    {
+      "name": "sam-toolchain",
+      "status": "blocked",
+      "source": "Synthetic test observation",
+      "observed": "Synthetic missing input; fixture only",
+      "date": "2026-10-22",
+      "attended": true,
+      "owner": "Jeremy",
+      "dependentMilestone": "fixture-dependent"
+    },
+    {
+      "name": "gh-toolchain",
+      "status": "blocked",
+      "source": "Synthetic test observation",
+      "observed": "Synthetic missing input; fixture only",
+      "date": "2026-10-22",
+      "attended": true,
+      "owner": "Jeremy",
+      "dependentMilestone": "fixture-dependent"
+    },
+    {
+      "name": "ask-toolchain",
+      "status": "blocked",
+      "source": "Synthetic test observation",
+      "observed": "Synthetic missing input; fixture only",
+      "date": "2026-10-22",
+      "attended": true,
+      "owner": "Jeremy",
+      "dependentMilestone": "fixture-dependent"
+    },
+    {
+      "name": "android-toolchain",
+      "status": "blocked",
+      "source": "Synthetic test observation",
+      "observed": "Synthetic missing input; fixture only",
+      "date": "2026-10-22",
+      "attended": true,
+      "owner": "Jeremy",
+      "dependentMilestone": "fixture-dependent"
+    },
+    {
+      "name": "predeploy-checks",
+      "status": "blocked",
+      "source": "Synthetic test observation",
+      "observed": "Synthetic missing input; fixture only",
+      "date": "2026-10-22",
+      "attended": true,
+      "owner": "Jeremy",
+      "dependentMilestone": "fixture-dependent"
+    },
+    {
+      "name": "attended-consent",
+      "status": "blocked",
+      "source": "Synthetic test observation",
+      "observed": "Synthetic missing input; fixture only",
+      "date": "2026-10-22",
+      "attended": true,
+      "owner": "Jeremy",
+      "dependentMilestone": "fixture-dependent"
+    },
+    {
+      "name": "noninteractive-session",
+      "status": "blocked",
+      "source": "Synthetic test observation",
+      "observed": "Synthetic missing input; fixture only",
+      "date": "2026-10-22",
+      "attended": true,
+      "owner": "Jeremy",
+      "dependentMilestone": "fixture-dependent"
+    },
+    {
+      "name": "network",
+      "status": "blocked",
+      "source": "Synthetic test observation",
+      "observed": "Synthetic missing input; fixture only",
+      "date": "2026-10-22",
+      "attended": true,
+      "owner": "Jeremy",
+      "dependentMilestone": "fixture-dependent"
+    },
+    {
+      "name": "session-duration",
+      "status": "blocked",
+      "source": "Synthetic test observation",
+      "observed": "Synthetic missing input; fixture only",
+      "date": "2026-10-22",
+      "attended": true,
+      "owner": "Jeremy",
+      "dependentMilestone": "fixture-dependent"
+    }
+  ],
+  "decisions": []
+}

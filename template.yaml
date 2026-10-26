@@ -1,0 +1,613 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: Suburban owner mobile and Alexa commands with durable dispatch and default-off vehicle controls.
+Parameters:
+  DomainName:
+    Type: String
+  CertificateArn:
+    Type: String
+  HostedZoneId:
+    Type: String
+  VehicleKey:
+    Type: String
+    AllowedPattern: 'truck-[a-f0-9]{32}'
+  PollingEnabled:
+    Type: String
+    Default: 'false'
+    AllowedValues: ['false', 'true']
+  DeploymentCanary:
+    Type: String
+    Default: ''
+    NoEcho: true
+  CanarySHA256:
+    Type: String
+    Default: ''
+  CredentialEncryptionKeyA:
+    Type: String
+    NoEcho: true
+  CredentialEncryptionKeyB:
+    Type: String
+    NoEcho: true
+  OnstarDeviceID:
+    Type: String
+    NoEcho: true
+  CredentialEncryptionKeyActive:
+    Type: String
+    AllowedValues: ['A', 'B']
+  OwnerAmazonUserID:
+    Type: String
+  EnrollmentVersion:
+    Type: String
+    AllowedPattern: '[1-9][0-9]*'
+  DeploymentNonce:
+    Type: String
+    AllowedPattern: '[a-f0-9]{40}'
+  LwaClientID:
+    Type: String
+  LwaClientSecret:
+    Type: String
+    NoEcho: true
+  AlexaSkillId:
+    Type: String
+    AllowedPattern: 'amzn1\.ask\.skill\.[0-9a-f-]{36}'
+  ReleaseBucketName:
+    Type: String
+    AllowedPattern: '[a-z0-9][a-z0-9.-]{1,61}[a-z0-9]'
+  MapReadKeySHA256:
+    Type: String
+    Default: ''
+    NoEcho: true
+    AllowedPattern: '([a-fA-F0-9]{64})?'
+Conditions:
+  PollingRequested: !Equals [!Ref PollingEnabled, 'true']
+Resources:
+  MapBucket:
+    Type: AWS::S3::Bucket
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+    Properties:
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        IgnorePublicAcls: true
+        BlockPublicPolicy: true
+        RestrictPublicBuckets: true
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault: {SSEAlgorithm: AES256}
+      LifecycleConfiguration:
+        Rules:
+          - Id: MapCacheExpiry
+            Status: Enabled
+            Prefix: map-cache/
+            ExpirationInDays: 30
+  StateTable:
+    Type: AWS::DynamoDB::Table
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+    Properties:
+      BillingMode: PAY_PER_REQUEST
+      DeletionProtectionEnabled: true
+      AttributeDefinitions:
+        - AttributeName: pk
+          AttributeType: S
+        - AttributeName: sk
+          AttributeType: S
+      KeySchema:
+        - AttributeName: pk
+          KeyType: HASH
+        - AttributeName: sk
+          KeyType: RANGE
+      TimeToLiveSpecification:
+        AttributeName: expiresAt
+        Enabled: true
+      StreamSpecification:
+        StreamViewType: NEW_AND_OLD_IMAGES
+  ApiLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      RetentionInDays: 7
+  ApiRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal: {Service: lambda.amazonaws.com}
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: FunctionLogs
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action: [logs:CreateLogStream, logs:PutLogEvents]
+                Resource: !GetAtt ApiLogGroup.Arn
+              # Mobile handoffs/sessions and encrypted stored provider status only.
+              - Effect: Allow
+                Action: [dynamodb:GetItem, dynamodb:PutItem, dynamodb:UpdateItem]
+                Resource: !GetAtt StateTable.Arn
+              - Effect: Allow
+                Action: lambda:InvokeFunction
+                Resource: !GetAtt WorkerFunction.Arn
+              - Effect: Allow
+                Action: s3:GetObject
+                Resource: !Sub 'arn:${AWS::Partition}:s3:::${ReleaseBucketName}/suburban-remote/android/*'
+              - Effect: Allow
+                Action: s3:GetObject
+                Resource: !Sub '${MapBucket.Arn}/map-cache/*'
+              # Home and Work geofence centers, read once at cold start.
+              - Effect: Allow
+                Action: ssm:GetParameter
+                Resource: !Sub 'arn:${AWS::Partition}:ssm:${AWS::Region}:${AWS::AccountId}:parameter/suburbanista-geo'
+  ApiFunction:
+    Type: AWS::Serverless::Function
+    Metadata:
+      BuildMethod: makefile
+    Properties:
+      CodeUri: .
+      Handler: bootstrap
+      Runtime: provided.al2023
+      Architectures: [arm64]
+      MemorySize: 256
+      # MCP requests include availability and owner validation before broker work.
+      Timeout: 30
+      ReservedConcurrentExecutions: 5
+      Role: !GetAtt ApiRole.Arn
+      Environment:
+        Variables:
+          DEPLOYMENT_CANARY: !Ref DeploymentCanary
+          CANARY_SHA256: !Ref CanarySHA256
+          STATE_TABLE: !Ref StateTable
+          OWNER_AMAZON_USER_ID: !Ref OwnerAmazonUserID
+          CREDENTIAL_ENCRYPTION_KEY_A: !Ref CredentialEncryptionKeyA
+          CREDENTIAL_ENCRYPTION_KEY_B: !Ref CredentialEncryptionKeyB
+          CREDENTIAL_ENCRYPTION_KEY_ACTIVE: !Ref CredentialEncryptionKeyActive
+          LWA_CLIENT_ID: !Ref LwaClientID
+          LWA_CLIENT_SECRET: !Ref LwaClientSecret
+          WORKER_FUNCTION_NAME: !Ref WorkerFunction
+          RELEASE_BUCKET: !Ref ReleaseBucketName
+          MAP_BUCKET: !Ref MapBucket
+          MAP_READ_KEY_SHA256: !Ref MapReadKeySHA256
+          GEOFENCE_PARAMETER: suburbanista-geo
+      LoggingConfig:
+        LogGroup: !Ref ApiLogGroup
+        LogFormat: JSON
+        ApplicationLogLevel: INFO
+      Events:
+        Root:
+          Type: HttpApi
+          Properties: {ApiId: !Ref HttpApi, Path: /, Method: ANY, PayloadFormatVersion: '2.0'}
+        Proxy:
+          Type: HttpApi
+          Properties: {ApiId: !Ref HttpApi, Path: '/{proxy+}', Method: ANY, PayloadFormatVersion: '2.0'}
+  HttpApi:
+    Type: AWS::Serverless::HttpApi
+    Properties:
+      DefaultRouteSettings: {ThrottlingBurstLimit: 20, ThrottlingRateLimit: 10}
+      Domain:
+        DomainName: !Ref DomainName
+        CertificateArn: !Ref CertificateArn
+        EndpointConfiguration: REGIONAL
+        Route53: {HostedZoneId: !Ref HostedZoneId}
+  WorkerLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      RetentionInDays: 7
+  WorkerRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal: {Service: lambda.amazonaws.com}
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: WorkerLogsAndCredentials
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action: [logs:CreateLogStream, logs:PutLogEvents]
+                Resource: !GetAtt WorkerLogGroup.Arn
+              # Credentials, owner command records, and persistent control flags.
+              - Effect: Allow
+                Action: [dynamodb:GetItem, dynamodb:PutItem, dynamodb:UpdateItem]
+                Resource: !GetAtt StateTable.Arn
+              - Effect: Allow
+                Action: [sqs:SendMessage, sqs:ReceiveMessage, sqs:DeleteMessage, sqs:GetQueueAttributes]
+                Resource: !GetAtt WorkQueue.Arn
+              # Home and Work geofence centers, read once at cold start.
+              - Effect: Allow
+                Action: ssm:GetParameter
+                Resource: !Sub 'arn:${AWS::Partition}:ssm:${AWS::Region}:${AWS::AccountId}:parameter/suburbanista-geo'
+  WorkerFunction:
+    Type: AWS::Serverless::Function
+    Metadata:
+      BuildMethod: makefile
+    Properties:
+      CodeUri: .
+      Handler: bootstrap
+      Runtime: provided.al2023
+      Architectures: [arm64]
+      MemorySize: 256
+      Timeout: 120
+      Role: !GetAtt WorkerRole.Arn
+      Environment:
+        Variables:
+          STATE_TABLE: !Ref StateTable
+          OWNER_AMAZON_USER_ID: !Ref OwnerAmazonUserID
+          CREDENTIAL_ENCRYPTION_KEY_A: !Ref CredentialEncryptionKeyA
+          CREDENTIAL_ENCRYPTION_KEY_B: !Ref CredentialEncryptionKeyB
+          CREDENTIAL_ENCRYPTION_KEY_ACTIVE: !Ref CredentialEncryptionKeyActive
+          ONSTAR_DEVICE_ID: !Ref OnstarDeviceID
+          ENROLLMENT_VERSION: !Ref EnrollmentVersion
+          DEPLOY_NONCE: !Ref DeploymentNonce
+          ALEXA_SKILL_ID: !Ref AlexaSkillId
+          LWA_CLIENT_ID: !Ref LwaClientID
+          WORK_QUEUE_URL: !Ref WorkQueue
+          GEOFENCE_PARAMETER: suburbanista-geo
+          WORK_QUEUE_ARN: !GetAtt WorkQueue.Arn
+          VEHICLE_KEY: !Ref VehicleKey
+          COMMAND_DRY_RUN: 'false'
+          LOCATION_POLLING_ENABLED: !Ref PollingEnabled
+          LOCATION_SCHEDULE_ARN: !Sub 'arn:${AWS::Partition}:scheduler:${AWS::Region}:${AWS::AccountId}:schedule/default/suburban-remote-location'
+      LoggingConfig:
+        LogGroup: !Ref WorkerLogGroup
+        LogFormat: Text
+      Events:
+        Commands:
+          Type: SQS
+          Properties:
+            Queue: !GetAtt WorkQueue.Arn
+            BatchSize: 1
+            ScalingConfig:
+              MaximumConcurrency: 2
+  HourlyTelemetryLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      RetentionInDays: 7
+  HourlyTelemetryRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal: {Service: lambda.amazonaws.com}
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: CollectHourlyDiagnostics
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action: [logs:CreateLogStream, logs:PutLogEvents]
+                Resource: !GetAtt HourlyTelemetryLogGroup.Arn
+              - Effect: Allow
+                Action: [dynamodb:GetItem, dynamodb:PutItem, dynamodb:UpdateItem]
+                Resource: !GetAtt StateTable.Arn
+              - Effect: Allow
+                Action: sqs:SendMessage
+                Resource: !GetAtt SchedulerDLQ.Arn
+  HourlyTelemetryFunction:
+    Type: AWS::Serverless::Function
+    Metadata:
+      BuildMethod: makefile
+    Properties:
+      CodeUri: .
+      Handler: bootstrap
+      Runtime: provided.al2023
+      Architectures: [arm64]
+      MemorySize: 256
+      Timeout: 90
+      ReservedConcurrentExecutions: 1
+      Role: !GetAtt HourlyTelemetryRole.Arn
+      Environment:
+        Variables:
+          STATE_TABLE: !Ref StateTable
+          OWNER_AMAZON_USER_ID: !Ref OwnerAmazonUserID
+          CREDENTIAL_ENCRYPTION_KEY_A: !Ref CredentialEncryptionKeyA
+          CREDENTIAL_ENCRYPTION_KEY_B: !Ref CredentialEncryptionKeyB
+          CREDENTIAL_ENCRYPTION_KEY_ACTIVE: !Ref CredentialEncryptionKeyActive
+          ONSTAR_DEVICE_ID: !Ref OnstarDeviceID
+          VEHICLE_KEY: !Ref VehicleKey
+          TELEMETRY_SCHEDULE_ARN: !Sub 'arn:${AWS::Partition}:scheduler:${AWS::Region}:${AWS::AccountId}:schedule/default/suburban-remote-hourly-telemetry'
+      LoggingConfig:
+        LogGroup: !Ref HourlyTelemetryLogGroup
+        LogFormat: JSON
+        ApplicationLogLevel: INFO
+      EventInvokeConfig:
+        MaximumEventAgeInSeconds: 60
+        MaximumRetryAttempts: 0
+        DestinationConfig:
+          OnFailure:
+            Type: SQS
+            Destination: !GetAtt SchedulerDLQ.Arn
+  HourlyTelemetrySchedulerRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal: {Service: scheduler.amazonaws.com}
+            Action: sts:AssumeRole
+            Condition:
+              StringEquals: {'aws:SourceAccount': !Ref 'AWS::AccountId'}
+              ArnEquals: {'aws:SourceArn': !Sub 'arn:${AWS::Partition}:scheduler:${AWS::Region}:${AWS::AccountId}:schedule-group/default'}
+      Policies:
+        - PolicyName: InvokeHourlyDiagnostics
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action: lambda:InvokeFunction
+                Resource: !GetAtt HourlyTelemetryFunction.Arn
+              - Effect: Allow
+                Action: sqs:SendMessage
+                Resource: !GetAtt SchedulerDLQ.Arn
+  HourlyTelemetrySchedule:
+    Type: AWS::Scheduler::Schedule
+    Properties:
+      Name: suburban-remote-hourly-telemetry
+      ScheduleExpression: 'cron(5 * * * ? *)'
+      FlexibleTimeWindow: {Mode: 'OFF'}
+      State: ENABLED
+      Target:
+        Arn: !GetAtt HourlyTelemetryFunction.Arn
+        RoleArn: !GetAtt HourlyTelemetrySchedulerRole.Arn
+        DeadLetterConfig: {Arn: !GetAtt SchedulerDLQ.Arn}
+        RetryPolicy: {MaximumEventAgeInSeconds: 60, MaximumRetryAttempts: 0}
+        Input: !Sub '{"kind":"hourly-diagnostics","vehicleKey":"${VehicleKey}","scheduleArn":"<aws.scheduler.schedule-arn>","scheduledAt":"<aws.scheduler.scheduled-time>"}'
+  MapResolverLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      RetentionInDays: 7
+  MapResolverDLQ:
+    Type: AWS::SQS::Queue
+    Properties:
+      QueueName: suburban-remote-map-resolver-dlq
+      MessageRetentionPeriod: 604800
+      SqsManagedSseEnabled: true
+  MapResolverRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal: {Service: lambda.amazonaws.com}
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: ResolvePrivateMaps
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action: [logs:CreateLogStream, logs:PutLogEvents]
+                Resource: !GetAtt MapResolverLogGroup.Arn
+              - Effect: Allow
+                Action: [dynamodb:GetItem, dynamodb:Query, dynamodb:PutItem, dynamodb:UpdateItem]
+                Resource: !GetAtt StateTable.Arn
+              - Effect: Allow
+                Action: [dynamodb:DescribeStream, dynamodb:GetRecords, dynamodb:GetShardIterator, dynamodb:ListStreams]
+                Resource: !GetAtt StateTable.StreamArn
+              - Effect: Allow
+                Action: [s3:GetObject, s3:PutObject]
+                Resource: !Sub '${MapBucket.Arn}/map-cache/*'
+              # S3 returns 404 for a missing object only when the caller can
+              # list this bucket. The resolver uses that distinction to rebuild.
+              - Effect: Allow
+                Action: s3:ListBucket
+                Resource: !GetAtt MapBucket.Arn
+              - Effect: Allow
+                Action: [geo-maps:GetTile, geo-maps:GetStyleDescriptor, geo-maps:GetStaticMap]
+                Resource: !Sub 'arn:${AWS::Partition}:geo-maps:${AWS::Region}::provider/default'
+              - Effect: Allow
+                Action: sqs:SendMessage
+                Resource: !GetAtt MapResolverDLQ.Arn
+              # Home and Work geofence centers, read once at cold start.
+              - Effect: Allow
+                Action: ssm:GetParameter
+                Resource: !Sub 'arn:${AWS::Partition}:ssm:${AWS::Region}:${AWS::AccountId}:parameter/suburbanista-geo'
+  MapResolverFunction:
+    Type: AWS::Serverless::Function
+    Metadata:
+      BuildMethod: makefile
+    Properties:
+      FunctionName: suburban-remote-map-resolver
+      CodeUri: .
+      Handler: bootstrap
+      Runtime: provided.al2023
+      Architectures: [arm64]
+      MemorySize: 256
+      Timeout: 60
+      ReservedConcurrentExecutions: 1
+      Role: !GetAtt MapResolverRole.Arn
+      Environment:
+        Variables:
+          STATE_TABLE: !Ref StateTable
+          OWNER_AMAZON_USER_ID: !Ref OwnerAmazonUserID
+          VEHICLE_KEY: !Ref VehicleKey
+          MAP_BUCKET: !Ref MapBucket
+          GEOFENCE_PARAMETER: suburbanista-geo
+          CREDENTIAL_ENCRYPTION_KEY_A: !Ref CredentialEncryptionKeyA
+          CREDENTIAL_ENCRYPTION_KEY_B: !Ref CredentialEncryptionKeyB
+          CREDENTIAL_ENCRYPTION_KEY_ACTIVE: !Ref CredentialEncryptionKeyActive
+      LoggingConfig:
+        LogGroup: !Ref MapResolverLogGroup
+        LogFormat: JSON
+        ApplicationLogLevel: INFO
+      Events:
+        Observations:
+          Type: DynamoDB
+          Properties:
+            Stream: !GetAtt StateTable.StreamArn
+            StartingPosition: LATEST
+            BatchSize: 1
+            ParallelizationFactor: 1
+            MaximumRetryAttempts: 2
+            MaximumRecordAgeInSeconds: 3600
+            BisectBatchOnFunctionError: true
+            FunctionResponseTypes: [ReportBatchItemFailures]
+            DestinationConfig:
+              OnFailure:
+                Type: SQS
+                Destination: !GetAtt MapResolverDLQ.Arn
+            FilterCriteria:
+              Filters:
+                - Pattern: '{"eventName":["INSERT"],"dynamodb":{"Keys":{"pk":{"S":[{"prefix":"auth#map-request#"}]}}}}'
+  AlexaLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      RetentionInDays: 7
+  AlexaRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal: {Service: lambda.amazonaws.com}
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: AlexaLogsAndBroker
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action: [logs:CreateLogStream, logs:PutLogEvents]
+                Resource: !GetAtt AlexaLogGroup.Arn
+              - Effect: Allow
+                Action: lambda:InvokeFunction
+                Resource: !GetAtt WorkerFunction.Arn
+  AlexaFunction:
+    Type: AWS::Serverless::Function
+    Metadata:
+      BuildMethod: makefile
+    Properties:
+      CodeUri: .
+      Handler: bootstrap
+      Runtime: provided.al2023
+      Architectures: [arm64]
+      MemorySize: 256
+      Timeout: 7
+      ReservedConcurrentExecutions: 2
+      Role: !GetAtt AlexaRole.Arn
+      Environment:
+        Variables:
+          ALEXA_SKILL_ID: !Ref AlexaSkillId
+          WORKER_FUNCTION_NAME: !Ref WorkerFunction
+      LoggingConfig:
+        LogGroup: !Ref AlexaLogGroup
+        LogFormat: JSON
+        ApplicationLogLevel: INFO
+      Events:
+        AlexaTrigger:
+          Type: AlexaSkill
+          Properties:
+            SkillId: !Ref AlexaSkillId
+  WorkerDLQ:
+    Type: AWS::SQS::Queue
+    Properties:
+      QueueName: suburban-remote-worker-dlq.fifo
+      FifoQueue: true
+      MessageRetentionPeriod: 604800
+      SqsManagedSseEnabled: true
+  WorkQueue:
+    Type: AWS::SQS::Queue
+    Properties:
+      QueueName: suburban-remote-work.fifo
+      FifoQueue: true
+      ContentBasedDeduplication: true
+      VisibilityTimeout: 720
+      MessageRetentionPeriod: 86400
+      SqsManagedSseEnabled: true
+      RedrivePolicy:
+        deadLetterTargetArn: !GetAtt WorkerDLQ.Arn
+        maxReceiveCount: 2
+  SchedulerDLQ:
+    Type: AWS::SQS::Queue
+    Properties:
+      QueueName: suburban-remote-scheduler-dlq
+      MessageRetentionPeriod: 604800
+      SqsManagedSseEnabled: true
+  SchedulerExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal: {Service: scheduler.amazonaws.com}
+            Action: sts:AssumeRole
+            Condition:
+              StringEquals: {'aws:SourceAccount': !Ref 'AWS::AccountId'}
+              ArnEquals: {'aws:SourceArn': !Sub 'arn:${AWS::Partition}:scheduler:${AWS::Region}:${AWS::AccountId}:schedule-group/default'}
+      Policies:
+        - PolicyName: ScheduleQueues
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action: sqs:SendMessage
+                Resource: [!GetAtt WorkQueue.Arn, !GetAtt SchedulerDLQ.Arn]
+  LocationSchedule:
+    Type: AWS::Scheduler::Schedule
+    Properties:
+      Name: suburban-remote-location
+      ScheduleExpression: 'cron(0,30 * * * ? *)'
+      FlexibleTimeWindow: {Mode: 'OFF'}
+      State: !If [PollingRequested, ENABLED, DISABLED]
+      Target:
+        Arn: !GetAtt WorkQueue.Arn
+        RoleArn: !GetAtt SchedulerExecutionRole.Arn
+        SqsParameters: {MessageGroupId: !Sub 'loc-${VehicleKey}'}
+        DeadLetterConfig: {Arn: !GetAtt SchedulerDLQ.Arn}
+        RetryPolicy: {MaximumEventAgeInSeconds: 60, MaximumRetryAttempts: 1}
+        Input: !Sub '{"kind":"location","vehicleKey":"${VehicleKey}","scheduleArn":"<aws.scheduler.schedule-arn>","scheduledAt":"<aws.scheduler.scheduled-time>"}'
+  WorkQueuePolicy:
+    Type: AWS::SQS::QueuePolicy
+    Properties:
+      Queues: [!Ref WorkQueue]
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              AWS: [!GetAtt SchedulerExecutionRole.Arn, !GetAtt ApiRole.Arn, !GetAtt WorkerRole.Arn]
+            Action: sqs:SendMessage
+            Resource: !GetAtt WorkQueue.Arn
+Outputs:
+  HourlyTelemetryFunctionArn:
+    Value: !GetAtt HourlyTelemetryFunction.Arn
+  HourlyTelemetryScheduleArn:
+    Value: !GetAtt HourlyTelemetrySchedule.Arn
+  MapResolverFunctionArn:
+    Value: !GetAtt MapResolverFunction.Arn
+  MapResolverDLQURL:
+    Value: !Ref MapResolverDLQ
+  MapURL:
+    Value: !Sub 'https://${DomainName}/api/map.png'
+  MapBucketName:
+    Value: !Ref MapBucket
+  WorkQueueURL:
+    Value: !Ref WorkQueue
+  LocationScheduleArn:
+    Value: !GetAtt LocationSchedule.Arn
+  ApiId:
+    Value: !Ref HttpApi
+  DomainName:
+    Value: !Ref DomainName
+  StateTableName:
+    Value: !Ref StateTable
+  StatePartitionKey:
+    Value: 'pk:S'
+  StateSortKey:
+    Value: 'sk:S'
+  WorkerFunctionArn:
+    Value: !GetAtt WorkerFunction.Arn
+  AlexaFunctionArn:
+    Value: !GetAtt AlexaFunction.Arn

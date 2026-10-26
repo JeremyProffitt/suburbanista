@@ -1,0 +1,1 @@
+{"commandResponse":{"requestId":"synthetic-request","requestTime":"2027-01-15T08:00:00Z","status":"failure","url":"https://na-mobile-api.gm.com/veh/cmd/v3/status/synthetic-request","body":{"error":{"message":"synthetic-private-provider-detail"}}}}

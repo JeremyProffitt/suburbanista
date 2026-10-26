@@ -1,0 +1,1 @@
+{"log":"canary forced-failure: parameter rejected; captured child output clean\ncanary success: captured child output clean\nHealth version verified: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\ncanary argv: encoded forms absent\n","artifact":"artifact leaked synthetic-canary-value-for-tests"}

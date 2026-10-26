@@ -1,0 +1,73 @@
+name: Read-only OnStar Lambda proof
+on:
+  workflow_dispatch:
+    inputs:
+      live:
+        description: Explicitly invoke the read-only provider proof
+        type: boolean
+        required: true
+        default: false
+      build_run_id:
+        description: Successful Deploy production run for this exact main commit
+        type: string
+        required: true
+permissions:
+  contents: read
+concurrency:
+  group: suburban-remote-production
+  cancel-in-progress: false
+jobs:
+  proof:
+    if: inputs.live && github.ref == 'refs/heads/main'
+    runs-on: [self-hosted, Linux, X64]
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      actions: read
+      id-token: write
+    env:
+      AWS_REGION: us-east-1
+      AWS_PAGER: ''
+    steps:
+      - name: Verify artifact provenance
+        env:
+          GH_TOKEN: ${{ github.token }}
+          BUILD_RUN_ID: ${{ inputs.build_run_id }}
+        run: |
+          set -euo pipefail
+          [[ "$BUILD_RUN_ID" =~ ^[0-9]+$ ]]
+          gh api "repos/$GITHUB_REPOSITORY/actions/runs/$BUILD_RUN_ID" | jq -e --arg sha "$GITHUB_SHA" '.head_sha == $sha and .head_branch == "main" and .event == "push" and .status == "completed" and .conclusion == "success" and .path == ".github/workflows/deploy.yml"' >/dev/null
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
+        with:
+          name: deployment
+          run-id: ${{ inputs.build_run_id }}
+          github-token: ${{ github.token }}
+      - run: tar -xzf deployment.tar.gz
+      - uses: aws-actions/configure-aws-credentials@7474bc4690e29a8392af63c5b98e7449536d5c3a
+        with:
+          retry-max-attempts: 1
+          role-to-assume: ${{ vars.AWS_DEPLOY_ROLE_ARN }}
+          role-session-name: gha-Suburban-Remote-proof-${{ github.run_id }}
+          aws-region: us-east-1
+      - name: Invoke exactly once and verify cold-start evidence
+        env:
+          DEPLOY_AWS_ACCOUNT: ${{ vars.DEPLOY_AWS_ACCOUNT }}
+        run: |
+          set -euo pipefail
+          test "$(aws sts get-caller-identity --query Account --output text)" = "$DEPLOY_AWS_ACCOUNT"
+          arn=$(aws cloudformation describe-stacks --stack-name suburban-remote --query 'Stacks[0].Outputs[?OutputKey==`WorkerFunctionArn`].OutputValue | [0]' --output text)
+          test -n "$arn" && test "$arn" != None
+          set +e
+          ./verify onstar --mode deployed --live --function "$arn" --nonce "$GITHUB_SHA" --commit "$GITHUB_SHA" --run-id "proof-$GITHUB_RUN_ID" --report artifacts/onstar-proof.json
+          result=$?
+          set -e
+          ./verify redaction --paths artifacts/onstar-proof.json
+          echo "PROOF_REPORT_SAFE=true" >> "$GITHUB_ENV"
+          exit "$result"
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always() && env.PROOF_REPORT_SAFE == 'true'
+        with:
+          name: onstar-proof
+          path: artifacts/onstar-proof.json
+          retention-days: 7
+          if-no-files-found: error
